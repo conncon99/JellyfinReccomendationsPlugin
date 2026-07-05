@@ -2,8 +2,8 @@ param(
     [string]$Version = "0.1.0.11.4",
     [string]$JellyfinVersion = "10.11.4",
     [string]$TargetAbi = "10.11.4.0",
-    [string]$RepositoryOwner = "YOUR_GITHUB_USERNAME",
-    [string]$RepositoryName = "Jellyfin-Reccomendations-Plugin",
+    [string]$RepositoryOwner = "conncon99",
+    [string]$RepositoryName = "JellyfinReccomendationsPlugin",
     [string]$ReleaseTag = "v0.1.0",
     [string]$Changelog = "Initial Trakt and Seerr recommendation test build"
 )

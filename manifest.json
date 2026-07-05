@@ -3,18 +3,18 @@
     "guid":  "1d1af7ee-7c42-42a0-9f03-d202274e68d5",
     "name":  "Jellyfin Recommendations",
     "description":  "Cross-client Jellyfin recommendations powered by Trakt and Seerr request handling.",
-    "owner":  "connc",
+    "owner":  "conncon99",
     "category":  "Metadata",
     "imageUrl":  "",
-    "repositoryUrl":  "https://github.com/connc/Jellyfin-Reccomendations-Plugin",
+    "repositoryUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin",
     "versions":  [
                      {
                          "version":  "0.1.0.11.4",
                          "changelog":  "Initial Trakt and Seerr recommendation test build",
                          "targetAbi":  "10.11.4.0",
-                         "sourceUrl":  "https://github.com/connc/Jellyfin-Reccomendations-Plugin/releases/download/v0.1.0/JellyRec-0.1.0.11.4.zip",
-                         "checksum":  "BEDD511472FF92F11C4602E3A002C4DF",
-                         "timestamp":  "2026-07-05T18:02:57.963Z",
+                         "sourceUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin/releases/download/v0.1.0/JellyRec-0.1.0.11.4.zip",
+                         "checksum":  "CB38EF8258DE95896470A56532390053",
+                         "timestamp":  "2026-07-05T18:10:50.323Z",
                          "dependencies":  [
 
                                           ]
