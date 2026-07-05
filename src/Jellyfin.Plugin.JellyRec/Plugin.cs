@@ -39,13 +39,7 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             {
                 Name = Name,
                 EmbeddedResourcePath = GetType().Namespace + ".Configuration.ConfigurationPage.html"
-            },
-            new PluginPageInfo
-            {
-                Name = "ConfigurationPage.js",
-                EmbeddedResourcePath = GetType().Namespace + ".Configuration.ConfigurationPage.js"
             }
         };
     }
 }
-
