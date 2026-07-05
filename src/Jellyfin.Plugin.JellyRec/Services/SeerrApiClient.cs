@@ -95,6 +95,45 @@ public sealed class SeerrApiClient
         return await response.Content.ReadFromJsonAsync<SeerrRequestResponse>(JsonOptions, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<HashSet<(string MediaType, int TmdbId)>> GetRequestedTmdbIdsAsync(PluginConfiguration config, CancellationToken cancellationToken)
+    {
+        var requested = new HashSet<(string MediaType, int TmdbId)>();
+        try
+        {
+            using var request = BuildRequest(config, HttpMethod.Get, "/api/v1/request?take=1000&filter=all");
+            using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Seerr requests endpoint returned status code {StatusCode}", response.StatusCode);
+                return requested;
+            }
+
+            var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            using var doc = JsonDocument.Parse(content);
+            if (doc.RootElement.TryGetProperty("results", out var results) && results.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in results.EnumerateArray())
+                {
+                    if (item.TryGetProperty("media", out var media))
+                    {
+                        var mediaType = media.TryGetProperty("mediaType", out var typeProp) ? typeProp.GetString() : null;
+                        var tmdbId = media.TryGetProperty("tmdbId", out var idProp) && idProp.TryGetInt32(out var id) ? id : 0;
+                        if (!string.IsNullOrEmpty(mediaType) && tmdbId > 0)
+                        {
+                            requested.Add((mediaType, tmdbId));
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch requested items from Seerr");
+        }
+
+        return requested;
+    }
+
     private static HttpRequestMessage BuildRequest(PluginConfiguration config, HttpMethod method, string path)
     {
         var baseUrl = config.SeerrUrl.TrimEnd('/');

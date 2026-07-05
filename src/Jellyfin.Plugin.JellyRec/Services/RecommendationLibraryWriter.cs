@@ -86,6 +86,13 @@ public sealed class RecommendationLibraryWriter
             return null;
         }
 
+        // Fast string check first to avoid expensive path resolution or disk checks for regular library items
+        if (!itemPath.StartsWith(libraryRoot, StringComparison.OrdinalIgnoreCase) &&
+            !itemPath.Contains("JellyRec", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
         var root = Path.GetFullPath(libraryRoot);
         var current = Directory.Exists(itemPath) ? itemPath : Path.GetDirectoryName(itemPath);
         while (!string.IsNullOrWhiteSpace(current) && Path.GetFullPath(current).StartsWith(root, StringComparison.OrdinalIgnoreCase))

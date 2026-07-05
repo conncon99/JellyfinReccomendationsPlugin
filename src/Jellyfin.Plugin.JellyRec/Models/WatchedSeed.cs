@@ -11,5 +11,7 @@ public sealed class WatchedSeed
     public DateTime? LastPlayedDate { get; init; }
 
     public int PlayCount { get; init; }
+
+    public double? UserRating { get; init; }
 }
 

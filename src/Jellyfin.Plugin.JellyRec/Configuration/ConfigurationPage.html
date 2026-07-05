@@ -64,6 +64,9 @@
           <div class="inputContainer">
             <input is="emby-input" id="RefreshIntervalHours" type="number" min="1" max="720" label="Refresh Interval Hours" />
           </div>
+          <div class="inputContainer">
+            <input is="emby-input" id="MinRating" type="number" min="0" max="10" step="0.1" label="Minimum Recommendation Rating (0.0 - 10.0)" />
+          </div>
           <label class="checkboxContainer">
             <input is="emby-checkbox" type="checkbox" id="RequestOnlyFirstSeason" />
             <span>Request only season 1 for TV shows</span>
@@ -120,7 +123,8 @@
         MaxRecommendations: 100,
         RefreshIntervalHours: 24,
         RequestOnlyFirstSeason: true,
-        RemoveAfterRequest: true
+        RemoveAfterRequest: true,
+        MinRating: 6.0
       };
 
       function byId(id) {
@@ -152,7 +156,8 @@
           MaxRecommendations: Number(byId("MaxRecommendations").value || defaults.MaxRecommendations),
           RefreshIntervalHours: Number(byId("RefreshIntervalHours").value || defaults.RefreshIntervalHours),
           RequestOnlyFirstSeason: byId("RequestOnlyFirstSeason").checked,
-          RemoveAfterRequest: byId("RemoveAfterRequest").checked
+          RemoveAfterRequest: byId("RemoveAfterRequest").checked,
+          MinRating: Number(byId("MinRating").value || defaults.MinRating)
         };
       }
 
@@ -178,6 +183,7 @@
         byId("RefreshIntervalHours").value = config.RefreshIntervalHours || defaults.RefreshIntervalHours;
         byId("RequestOnlyFirstSeason").checked = config.RequestOnlyFirstSeason !== false;
         byId("RemoveAfterRequest").checked = config.RemoveAfterRequest !== false;
+        byId("MinRating").value = config.MinRating !== undefined ? config.MinRating : defaults.MinRating;
       }
 
       function ensureFolder() {

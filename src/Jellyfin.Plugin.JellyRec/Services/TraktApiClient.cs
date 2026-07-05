@@ -180,6 +180,9 @@ public sealed class TraktApiClient
         var overview = mediaElement.TryGetProperty("overview", out var overviewProperty)
             ? overviewProperty.GetString()
             : null;
+        var rating = mediaElement.TryGetProperty("rating", out var ratingProp) && ratingProp.ValueKind == JsonValueKind.Number
+            ? ratingProp.GetDouble()
+            : 0.0;
 
         if (bucket == "movies")
         {
@@ -189,6 +192,7 @@ public sealed class TraktApiClient
                 MediaType = "movie",
                 Title = title ?? "Untitled Movie",
                 Overview = overview ?? string.Empty,
+                Rating = rating,
                 Score = 1,
                 SourceTitle = "Trakt"
             };
@@ -202,6 +206,7 @@ public sealed class TraktApiClient
                 MediaType = "tv",
                 Title = title ?? "Untitled Show",
                 Overview = overview ?? string.Empty,
+                Rating = rating,
                 Score = 1,
                 SourceTitle = "Trakt"
             };

@@ -9,6 +9,17 @@
     "repositoryUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin",
     "versions":  [
                      {
+                         "version":  "0.1.29.0",
+                         "changelog":  "Optimized library sweeps and API queries, excluded already requested Seerr items, filtered out low-rated seed items, and added star-rating based scoring priority.",
+                         "targetAbi":  "10.11.0.0",
+                         "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.29.0.zip",
+                         "checksum":  "C1BEFE518BD991A3A3A2D8F43A82166A",
+                         "timestamp":  "2026-07-05T20:18:42.374Z",
+                         "dependencies":  [
+
+                                          ]
+                     },
+                     {
                          "version":  "0.1.28.0",
                          "changelog":  "Create recommendations library on Jellyfin home screen",
                          "targetAbi":  "10.11.0.0",

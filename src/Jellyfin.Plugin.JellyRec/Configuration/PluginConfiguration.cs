@@ -43,4 +43,6 @@ public sealed class PluginConfiguration : BasePluginConfiguration
     public bool RequestOnlyFirstSeason { get; set; } = true;
 
     public bool RemoveAfterRequest { get; set; } = true;
+
+    public double MinRating { get; set; } = 6.0;
 }
