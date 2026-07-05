@@ -214,7 +214,7 @@
             intervalSeconds += 5;
           }
 
-          if (result && (result.status === "expired" || result.status === "denied" || result.status === "failed")) {
+          if (result && (result.status === "expired" || result.status === "denied" || result.status === "failed" || result.status === "invalid_client" || result.status === "invalid_grant")) {
             throw new Error(result.status);
           }
 
@@ -319,7 +319,13 @@
           }).then(function () {
             Dashboard.alert("Trakt is connected.");
           }).catch(function (error) {
-            Dashboard.alert("Could not connect Trakt: " + (error && error.message ? error.message : "authorization failed"));
+            const reason = error && error.message ? error.message : "authorization failed";
+            const message = reason === "invalid_client"
+              ? "Trakt rejected the client ID or client secret."
+              : reason === "invalid_grant"
+                ? "Trakt rejected the device code. Start the connection again."
+                : "Could not connect Trakt: " + reason;
+            Dashboard.alert(message);
           }).finally(hideLoading);
         });
 

@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Jellyfin.Plugin.JellyRec.Configuration;
 using Jellyfin.Plugin.JellyRec.Models;
 using Microsoft.Extensions.Logging;
@@ -86,6 +87,16 @@ public sealed class TraktApiClient
         if (content.Contains("access_denied", StringComparison.OrdinalIgnoreCase))
         {
             return TraktTokenPollResult.Denied();
+        }
+
+        if (content.Contains("invalid_client", StringComparison.OrdinalIgnoreCase))
+        {
+            return TraktTokenPollResult.InvalidClient();
+        }
+
+        if (content.Contains("invalid_grant", StringComparison.OrdinalIgnoreCase))
+        {
+            return TraktTokenPollResult.InvalidGrant();
         }
 
         _logger.LogWarning("Trakt device token poll failed with {StatusCode}: {Response}", response.StatusCode, content);
@@ -192,25 +203,34 @@ public sealed class TraktApiClient
 
 public sealed class TraktDeviceCodeResponse
 {
+    [JsonPropertyName("device_code")]
     public string DeviceCode { get; set; } = string.Empty;
 
+    [JsonPropertyName("user_code")]
     public string UserCode { get; set; } = string.Empty;
 
+    [JsonPropertyName("verification_url")]
     public string VerificationUrl { get; set; } = string.Empty;
 
+    [JsonPropertyName("expires_in")]
     public int ExpiresIn { get; set; }
 
+    [JsonPropertyName("interval")]
     public int Interval { get; set; } = 5;
 }
 
 public sealed class TraktTokenResponse
 {
+    [JsonPropertyName("access_token")]
     public string AccessToken { get; set; } = string.Empty;
 
+    [JsonPropertyName("refresh_token")]
     public string RefreshToken { get; set; } = string.Empty;
 
+    [JsonPropertyName("expires_in")]
     public int ExpiresIn { get; set; }
 
+    [JsonPropertyName("token_type")]
     public string TokenType { get; set; } = string.Empty;
 }
 
@@ -235,6 +255,10 @@ public sealed class TraktTokenPollResult
     public static TraktTokenPollResult Expired() => new("expired");
 
     public static TraktTokenPollResult Denied() => new("denied");
+
+    public static TraktTokenPollResult InvalidClient() => new("invalid_client");
+
+    public static TraktTokenPollResult InvalidGrant() => new("invalid_grant");
 
     public static TraktTokenPollResult Failed() => new("failed");
 }

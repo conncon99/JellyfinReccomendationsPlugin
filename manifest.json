@@ -9,6 +9,17 @@
     "repositoryUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin",
     "versions":  [
                      {
+                         "version":  "0.1.16.0",
+                         "changelog":  "Fix Trakt device-code OAuth JSON mapping",
+                         "targetAbi":  "10.11.0.0",
+                         "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.16.0.zip",
+                         "checksum":  "A7BC585B63902297EBE838E0D978848E",
+                         "timestamp":  "2026-07-05T19:02:52.897Z",
+                         "dependencies":  [
+
+                                          ]
+                     },
+                     {
                          "version":  "0.1.15.0",
                          "changelog":  "Add Trakt device-code connection flow",
                          "targetAbi":  "10.11.0.0",
