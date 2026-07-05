@@ -10,7 +10,7 @@ public sealed class PluginConfiguration : BasePluginConfiguration
 
     public string ApiKey { get; set; } = string.Empty;
 
-    public string RecommendationLibraryPath { get; set; } = "/data/JellyRec";
+    public string RecommendationLibraryPath { get; set; } = string.Empty;
 
     public string SourceLibraryPaths { get; set; } = string.Empty;
 

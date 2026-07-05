@@ -59,7 +59,17 @@
     event.preventDefault();
     Dashboard.showLoadingMsg();
     ApiClient.updatePluginConfiguration(pluginId, readForm()).then(function () {
+      return ApiClient.ajax({
+        type: "POST",
+        url: ApiClient.getUrl("JellyRec/EnsureRecommendationFolder"),
+        data: JSON.stringify(readForm()),
+        contentType: "application/json"
+      });
+    }).then(function () {
       Dashboard.processPluginConfigurationUpdateResult();
+    }).catch(function () {
+      Dashboard.alert("Saved settings, but JellyRec could not create the recommendation folder. Check the path and Jellyfin permissions.");
+      Dashboard.hideLoadingMsg();
     });
   });
 
@@ -100,6 +110,25 @@
       Dashboard.alert("Recommendation refresh started.");
     }).catch(function () {
       Dashboard.alert("Recommendation refresh failed. Check Jellyfin logs.");
+    }).finally(Dashboard.hideLoadingMsg);
+  });
+
+  byId("EnsureFolderButton").addEventListener("click", function () {
+    Dashboard.showLoadingMsg();
+    ApiClient.ajax({
+      type: "POST",
+      url: ApiClient.getUrl("JellyRec/EnsureRecommendationFolder"),
+      data: JSON.stringify(readForm()),
+      contentType: "application/json"
+    }).then(function (result) {
+      if (result && result.path) {
+        byId("RecommendationLibraryPath").value = result.path;
+        Dashboard.alert("Recommendation folder is ready: " + result.path);
+      } else {
+        Dashboard.alert("Recommendation folder is ready.");
+      }
+    }).catch(function () {
+      Dashboard.alert("Could not create the recommendation folder. Check the path and Jellyfin permissions.");
     }).finally(Dashboard.hideLoadingMsg);
   });
 })();

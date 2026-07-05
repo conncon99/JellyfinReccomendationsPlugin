@@ -9,6 +9,17 @@
     "repositoryUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin",
     "versions":  [
                      {
+                         "version":  "0.1.12.0",
+                         "changelog":  "Create and verify recommendation folder from plugin configuration",
+                         "targetAbi":  "10.11.0.0",
+                         "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.12.0.zip",
+                         "checksum":  "25B606E484B9C8C7C28FC2B7CEE181EC",
+                         "timestamp":  "2026-07-05T18:41:44.912Z",
+                         "dependencies":  [
+
+                                          ]
+                     },
+                     {
                          "version":  "0.1.11.0",
                          "changelog":  "Initial Trakt and Seerr recommendation test build",
                          "targetAbi":  "10.11.0.0",

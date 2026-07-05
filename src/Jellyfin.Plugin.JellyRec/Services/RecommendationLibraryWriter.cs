@@ -10,21 +10,23 @@ public sealed class RecommendationLibraryWriter
 {
     public const string MetadataFileName = "jellyrec.json";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
+    private readonly RecommendationFolderManager _folderManager;
     private readonly ILogger<RecommendationLibraryWriter> _logger;
 
-    public RecommendationLibraryWriter(ILogger<RecommendationLibraryWriter> logger)
+    public RecommendationLibraryWriter(RecommendationFolderManager folderManager, ILogger<RecommendationLibraryWriter> logger)
     {
+        _folderManager = folderManager;
         _logger = logger;
     }
 
     public async Task WriteAsync(PluginConfiguration config, IReadOnlyCollection<RecommendationItem> recommendations, CancellationToken cancellationToken)
     {
-        Directory.CreateDirectory(config.RecommendationLibraryPath);
+        var libraryRoot = await _folderManager.EnsureRecommendationPathAsync(config, cancellationToken).ConfigureAwait(false);
 
         foreach (var item in recommendations)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var folder = GetItemFolder(config.RecommendationLibraryPath, item);
+            var folder = GetItemFolder(libraryRoot, item);
             Directory.CreateDirectory(folder);
 
             await File.WriteAllTextAsync(
@@ -42,7 +44,7 @@ public sealed class RecommendationLibraryWriter
             }
         }
 
-        _logger.LogInformation("Wrote {Count} recommendation placeholders to {Path}", recommendations.Count, config.RecommendationLibraryPath);
+        _logger.LogInformation("Wrote {Count} recommendation placeholders to {Path}", recommendations.Count, libraryRoot);
     }
 
     public static RecommendationItem? TryReadMetadataForPath(string libraryRoot, string? itemPath)
@@ -130,4 +132,3 @@ public sealed class RecommendationLibraryWriter
         return string.IsNullOrWhiteSpace(cleaned) ? "Untitled" : cleaned;
     }
 }
-

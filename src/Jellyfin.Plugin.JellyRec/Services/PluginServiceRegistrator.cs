@@ -13,6 +13,7 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
     {
         serviceCollection.AddHttpClient<SeerrApiClient>();
         serviceCollection.AddHttpClient<TraktApiClient>();
+        serviceCollection.AddTransient<RecommendationFolderManager>();
         serviceCollection.AddTransient<RecommendationService>();
         serviceCollection.AddTransient<RecommendationLibraryWriter>();
         serviceCollection.AddTransient<RefreshRecommendationsTask>();

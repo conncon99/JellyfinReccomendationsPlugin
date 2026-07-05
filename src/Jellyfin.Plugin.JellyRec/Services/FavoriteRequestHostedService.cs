@@ -10,17 +10,20 @@ public sealed class FavoriteRequestHostedService : IHostedService
     private readonly IUserDataManager _userDataManager;
     private readonly IUserManager _userManager;
     private readonly SeerrApiClient _seerrApiClient;
+    private readonly RecommendationFolderManager _folderManager;
     private readonly ILogger<FavoriteRequestHostedService> _logger;
 
     public FavoriteRequestHostedService(
         IUserDataManager userDataManager,
         IUserManager userManager,
         SeerrApiClient seerrApiClient,
+        RecommendationFolderManager folderManager,
         ILogger<FavoriteRequestHostedService> logger)
     {
         _userDataManager = userDataManager;
         _userManager = userManager;
         _seerrApiClient = seerrApiClient;
+        _folderManager = folderManager;
         _logger = logger;
     }
 
@@ -47,7 +50,8 @@ public sealed class FavoriteRequestHostedService : IHostedService
             return;
         }
 
-        var recommendation = RecommendationLibraryWriter.TryReadMetadataForPath(Plugin.Config.RecommendationLibraryPath, e.Item.Path);
+        var recommendationRoot = _folderManager.ResolveRecommendationPath(Plugin.Config);
+        var recommendation = RecommendationLibraryWriter.TryReadMetadataForPath(recommendationRoot, e.Item.Path);
         if (recommendation is null)
         {
             return;
@@ -76,4 +80,3 @@ public sealed class FavoriteRequestHostedService : IHostedService
         }
     }
 }
-
