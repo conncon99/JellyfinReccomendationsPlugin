@@ -9,6 +9,17 @@
     "repositoryUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin",
     "versions":  [
                      {
+                         "version":  "0.1.19.0",
+                         "changelog":  "Show detailed Trakt authorization failures in configuration",
+                         "targetAbi":  "10.11.0.0",
+                         "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.19.0.zip",
+                         "checksum":  "1D55AC47C9DA38A1161F01BAF0D28D4F",
+                         "timestamp":  "2026-07-05T19:12:31.642Z",
+                         "dependencies":  [
+
+                                          ]
+                     },
+                     {
                          "version":  "0.1.18.0",
                          "changelog":  "Add Trakt OAuth request headers and detailed errors",
                          "targetAbi":  "10.11.0.0",

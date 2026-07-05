@@ -351,6 +351,10 @@
               contentType: "application/json"
             });
           }).then(function (result) {
+            if (result && result.status === "failed") {
+              throw new Error(result.message || "authorization failed");
+            }
+
             const verificationUrl = valueOf(result, "verificationUrl", "verification_url", "https://trakt.tv/activate");
             const userCode = valueOf(result, "userCode", "user_code", "");
             const deviceCode = valueOf(result, "deviceCode", "device_code", "");

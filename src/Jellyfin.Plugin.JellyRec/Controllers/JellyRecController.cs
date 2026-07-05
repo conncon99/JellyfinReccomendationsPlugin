@@ -60,7 +60,7 @@ public sealed class JellyRecController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to start Trakt device authorization");
-            return BadRequest(new { status = "failed", message = ex.Message });
+            return Ok(new { status = "failed", message = ex.Message });
         }
     }
 
@@ -86,7 +86,7 @@ public sealed class JellyRecController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to poll Trakt device authorization");
-            return BadRequest(new { status = "failed", message = ex.Message });
+            return Ok(new { status = "failed", message = ex.Message });
         }
     }
 
