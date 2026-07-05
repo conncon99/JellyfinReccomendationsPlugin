@@ -22,6 +22,10 @@
         <div class="inputContainer">
           <input is="emby-input" id="TraktClientSecret" type="password" label="Trakt Client Secret" />
         </div>
+        <div id="TraktActivationPanel" class="fieldDescription" style="display:none; margin: 1em 0;">
+          <div>Open <a id="TraktActivationUrl" href="https://trakt.tv/activate" target="_blank" rel="noopener noreferrer">https://trakt.tv/activate</a></div>
+          <div>Code: <strong id="TraktActivationCode"></strong></div>
+        </div>
         <input id="TraktAccessToken" type="hidden" />
         <input id="TraktRefreshToken" type="hidden" />
         <input id="TraktAccessTokenExpiresAtUtc" type="hidden" />
@@ -246,6 +250,18 @@
         return error.message || error.statusText || "authorization failed";
       }
 
+      function showTraktActivation(verificationUrl, userCode) {
+        byId("TraktActivationUrl").href = verificationUrl;
+        byId("TraktActivationUrl").textContent = verificationUrl;
+        byId("TraktActivationCode").textContent = userCode;
+        byId("TraktActivationPanel").style.display = "block";
+      }
+
+      function hideTraktActivation() {
+        byId("TraktActivationCode").textContent = "";
+        byId("TraktActivationPanel").style.display = "none";
+      }
+
       function pollTraktDeviceToken(deviceCode, intervalSeconds, attemptCount) {
           return ApiClient.ajax({
             type: "POST",
@@ -386,6 +402,7 @@
               throw new Error("Trakt did not return a device code. Raw response: " + JSON.stringify(result));
             }
 
+            showTraktActivation(verificationUrl, userCode);
             Dashboard.alert("Open " + verificationUrl + " and enter code: " + userCode);
             return new Promise(function (resolve) {
               setTimeout(resolve, Math.max(5, interval || 5) * 1000);
@@ -393,6 +410,7 @@
               return pollTraktDeviceToken(deviceCode, interval || 5, Math.ceil((expiresIn || 600) / Math.max(5, interval || 5)));
             });
           }).then(function () {
+            hideTraktActivation();
             Dashboard.alert("Trakt is connected.");
           }).catch(function (error) {
             const reason = errorMessage(error);
