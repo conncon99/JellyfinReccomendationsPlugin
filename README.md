@@ -26,6 +26,8 @@ The easiest remote test loop is:
 
    `https://raw.githubusercontent.com/<you>/<repo>/main/manifest.json`
 
+   Do not use the normal GitHub page URL (`https://github.com/.../blob/main/manifest.json`). Jellyfin needs the raw JSON URL.
+
 5. Install **Jellyfin Recommendations** from the plugin catalog and restart Jellyfin.
 
 ## Recommendation Strategy

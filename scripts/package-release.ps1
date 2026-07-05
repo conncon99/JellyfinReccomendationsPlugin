@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "0.1.0.11.0",
+    [string]$Version = "0.1.11.0",
     [string]$JellyfinVersion = "10.11.0",
     [string]$TargetAbi = "10.11.0.0",
     [string]$RepositoryOwner = "conncon99",
@@ -72,7 +72,9 @@ $entry = [ordered]@{
     timestamp = $timestamp
     dependencies = @()
 }
-$existingVersions = @($plugin.versions) | Where-Object { $_.version -ne $Version }
+$existingVersions = @($plugin.versions) | Where-Object {
+    $_.version -ne $Version -and $_.version -match '^\d+\.\d+(\.\d+){0,2}$'
+}
 $plugin.versions = @($entry) + $existingVersions
 $manifestOutput = "[`n" + ($plugin | ConvertTo-Json -Depth 10) + "`n]"
 Set-Content $manifestPath -Value $manifestOutput -NoNewline
