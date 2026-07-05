@@ -10,11 +10,11 @@
     "versions":  [
                      {
                          "version":  "0.1.29.0",
-                         "changelog":  "Optimized library sweeps and API queries, excluded already requested Seerr items, filtered out low-rated seed items, and added star-rating based scoring priority.",
+                         "changelog":  "Optimized sweeps, parallelized API queries, filtered out Seerr requests, enabled star-rating filters, added Favorites seed boosting, and added Time Decay recency prioritization.",
                          "targetAbi":  "10.11.0.0",
                          "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.29.0.zip",
-                         "checksum":  "C1BEFE518BD991A3A3A2D8F43A82166A",
-                         "timestamp":  "2026-07-05T20:18:42.374Z",
+                         "checksum":  "B62D2801C5FAD69310924A50C33A9F4A",
+                         "timestamp":  "2026-07-05T20:26:37.624Z",
                          "dependencies":  [
 
                                           ]

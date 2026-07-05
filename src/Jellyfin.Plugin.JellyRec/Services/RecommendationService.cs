@@ -23,6 +23,7 @@ public sealed class RecommendationService
     private readonly SeerrApiClient _seerrApiClient;
     private readonly TraktApiClient _traktApiClient;
     private readonly RecommendationLibraryWriter _writer;
+    private readonly RecommendationFolderManager _folderManager;
     private readonly ILogger<RecommendationService> _logger;
 
     public RecommendationService(
@@ -32,6 +33,7 @@ public sealed class RecommendationService
         SeerrApiClient seerrApiClient,
         TraktApiClient traktApiClient,
         RecommendationLibraryWriter writer,
+        RecommendationFolderManager folderManager,
         ILogger<RecommendationService> logger)
     {
         _libraryManager = libraryManager;
@@ -40,6 +42,7 @@ public sealed class RecommendationService
         _seerrApiClient = seerrApiClient;
         _traktApiClient = traktApiClient;
         _writer = writer;
+        _folderManager = folderManager;
         _logger = logger;
     }
 
@@ -124,8 +127,26 @@ public sealed class RecommendationService
                     var seed = item.Seed;
                     var seerrItems = await item.Task.ConfigureAwait(false);
 
-                    // Boost weight if the seed item is highly rated by the user
+                    // Calculate Time Decay (Recency Bias) factor
+                    double decayFactor = 1.0;
+                    if (seed.LastPlayedDate.HasValue)
+                    {
+                        var ageInDays = (DateTime.UtcNow - seed.LastPlayedDate.Value.ToUniversalTime()).TotalDays;
+                        if (ageInDays > 0)
+                        {
+                            // Smoothly decays to 0.5 around 33 days, and 0.25 at 100 days
+                            decayFactor = 1.0 / (1.0 + 0.03 * ageInDays);
+                        }
+                    }
+                    else
+                    {
+                        // Baseline factor for rated/favorited items that haven't been played
+                        decayFactor = 0.8;
+                    }
+
+                    // Boost weight if the seed item is highly rated or favorited by the user
                     double ratingBoost = seed.UserRating.HasValue ? seed.UserRating.Value : Math.Max(0, seed.PlayCount);
+                    double finalBoost = ratingBoost * decayFactor;
 
                     foreach (var rec in seerrItems)
                     {
@@ -139,7 +160,7 @@ public sealed class RecommendationService
                             ReleaseDate = rec.ReleaseDate,
                             FirstAirDate = rec.FirstAirDate,
                             Rating = rec.VoteAverage,
-                            Score = config.SeerrWeight + ratingBoost,
+                            Score = config.SeerrWeight + finalBoost,
                             SourceTitle = seed.Title
                         });
                     }
@@ -180,7 +201,10 @@ public sealed class RecommendationService
 
     private (List<WatchedSeed> Seeds, HashSet<(string MediaType, int TmdbId)> Existing) GetWatchedSeedsAndExistingItems(int limit)
     {
-        var sourcePaths = Plugin.Config.SourceLibraryPaths
+        var config = Plugin.Config;
+        var recFolder = _folderManager.ResolveRecommendationPath(config);
+
+        var sourcePaths = config.SourceLibraryPaths
             .Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
         var seeds = new List<WatchedSeed>();
@@ -194,6 +218,12 @@ public sealed class RecommendationService
 
         foreach (var item in items)
         {
+            // Skip placeholders in the recommendations folder itself
+            if (IsInRecommendationsFolder(item.Path, recFolder))
+            {
+                continue;
+            }
+
             var tmdb = GetTmdbId(item);
             if (!tmdb.HasValue)
             {
@@ -209,18 +239,26 @@ public sealed class RecommendationService
                 continue;
             }
 
-            // Find watch history and rating status across users
+            // Find watch history, rating status, and favorite status across users
             var bestData = _userManager.Users
                 .Select(user => _userDataManager.GetUserData(user, item))
                 .Where(data => data is not null)
                 .Cast<UserItemData>()
-                .Where(data => data.Played || data.PlayCount > 0 || data.Rating.HasValue)
+                .Where(data => data.Played || data.PlayCount > 0 || data.Rating.HasValue || data.IsFavorite)
                 .OrderByDescending(data => data.LastPlayedDate)
                 .FirstOrDefault();
 
             if (bestData is null)
             {
                 continue;
+            }
+
+            // Extract rating and apply a boost if the item was favorited
+            double? userRating = bestData.Rating;
+            if (bestData.IsFavorite)
+            {
+                // Unrated favorites start at 8.0 + 2.0 = 10.0. Rated favorites get a +2.0 rating boost capped at 10.0.
+                userRating = Math.Min(10.0, (userRating ?? 8.0) + 2.0);
             }
 
             seeds.Add(new WatchedSeed
@@ -230,7 +268,7 @@ public sealed class RecommendationService
                 Title = item.Name,
                 LastPlayedDate = bestData.LastPlayedDate,
                 PlayCount = bestData.PlayCount,
-                UserRating = bestData.Rating
+                UserRating = userRating
             });
         }
 
@@ -242,6 +280,22 @@ public sealed class RecommendationService
             .ToList();
 
         return (sortedSeeds, existing);
+    }
+
+    private static bool IsInRecommendationsFolder(string? path, string recFolder)
+    {
+        if (string.IsNullOrWhiteSpace(path) || string.IsNullOrWhiteSpace(recFolder))
+        {
+            return false;
+        }
+        try
+        {
+            return Path.GetFullPath(path).StartsWith(Path.GetFullPath(recFolder), StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static int? GetTmdbId(BaseItem item)
