@@ -20,8 +20,11 @@
           <input is="emby-input" id="TraktClientId" type="text" label="Trakt Client ID" />
         </div>
         <div class="inputContainer">
-          <input is="emby-input" id="TraktAccessToken" type="password" label="Trakt Access Token" />
+          <input is="emby-input" id="TraktClientSecret" type="password" label="Trakt Client Secret" />
         </div>
+        <input id="TraktAccessToken" type="hidden" />
+        <input id="TraktRefreshToken" type="hidden" />
+        <input id="TraktAccessTokenExpiresAtUtc" type="hidden" />
         <div class="inputContainer">
           <input is="emby-input" id="RecommendationLibraryPath" type="text" label="Recommendation Library Directory" />
         </div>
@@ -74,6 +77,9 @@
           <button is="emby-button" type="button" id="TestTraktButton" class="raised block">
             <span>Test Trakt</span>
           </button>
+          <button is="emby-button" type="button" id="ConnectTraktButton" class="raised block">
+            <span>Connect Trakt</span>
+          </button>
           <button is="emby-button" type="button" id="RefreshButton" class="raised block">
             <span>Refresh Recommendations</span>
           </button>
@@ -98,7 +104,10 @@
         SourceLibraryPaths: "",
         EnableTraktRecommendations: true,
         TraktClientId: "",
+        TraktClientSecret: "",
         TraktAccessToken: "",
+        TraktRefreshToken: "",
+        TraktAccessTokenExpiresAtUtc: null,
         EnableSeerrRecommendations: true,
         TraktWeight: 3,
         SeerrWeight: 1,
@@ -127,7 +136,10 @@
           SourceLibraryPaths: byId("SourceLibraryPaths").value,
           EnableTraktRecommendations: byId("EnableTraktRecommendations").checked,
           TraktClientId: byId("TraktClientId").value,
+          TraktClientSecret: byId("TraktClientSecret").value,
           TraktAccessToken: byId("TraktAccessToken").value,
+          TraktRefreshToken: byId("TraktRefreshToken").value,
+          TraktAccessTokenExpiresAtUtc: byId("TraktAccessTokenExpiresAtUtc").value || null,
           EnableSeerrRecommendations: byId("EnableSeerrRecommendations").checked,
           TraktWeight: Number(byId("TraktWeight").value || defaults.TraktWeight),
           SeerrWeight: Number(byId("SeerrWeight").value || defaults.SeerrWeight),
@@ -149,7 +161,10 @@
         byId("SourceLibraryPaths").value = config.SourceLibraryPaths || "";
         byId("EnableTraktRecommendations").checked = config.EnableTraktRecommendations !== false;
         byId("TraktClientId").value = config.TraktClientId || "";
+        byId("TraktClientSecret").value = config.TraktClientSecret || "";
         byId("TraktAccessToken").value = config.TraktAccessToken || "";
+        byId("TraktRefreshToken").value = config.TraktRefreshToken || "";
+        byId("TraktAccessTokenExpiresAtUtc").value = config.TraktAccessTokenExpiresAtUtc || "";
         byId("EnableSeerrRecommendations").checked = config.EnableSeerrRecommendations !== false;
         byId("TraktWeight").value = config.TraktWeight || defaults.TraktWeight;
         byId("SeerrWeight").value = config.SeerrWeight || defaults.SeerrWeight;
@@ -167,6 +182,51 @@
           url: ApiClient.getUrl("JellyRec/EnsureRecommendationFolder"),
           data: JSON.stringify(readForm()),
           contentType: "application/json"
+        });
+      }
+
+      function saveConfig(config) {
+        return ApiClient.updatePluginConfiguration(pluginId, config || readForm());
+      }
+
+      function pollTraktDeviceToken(deviceCode, intervalSeconds, attemptCount) {
+        return ApiClient.ajax({
+          type: "POST",
+          url: ApiClient.getUrl("JellyRec/Trakt/DeviceToken"),
+          data: JSON.stringify({
+            configuration: readForm(),
+            deviceCode: deviceCode
+          }),
+          contentType: "application/json"
+        }).then(function (result) {
+          if (result && result.status === "approved") {
+            const config = readForm();
+            config.TraktAccessToken = result.accessToken || "";
+            config.TraktRefreshToken = result.refreshToken || "";
+            config.TraktAccessTokenExpiresAtUtc = result.expiresAtUtc || null;
+            writeForm(config);
+            return saveConfig(config).then(function () {
+              return result;
+            });
+          }
+
+          if (result && result.status === "slow_down") {
+            intervalSeconds += 5;
+          }
+
+          if (result && (result.status === "expired" || result.status === "denied" || result.status === "failed")) {
+            throw new Error(result.status);
+          }
+
+          if (attemptCount <= 0) {
+            throw new Error("expired");
+          }
+
+          return new Promise(function (resolve) {
+            setTimeout(resolve, Math.max(5, intervalSeconds) * 1000);
+          }).then(function () {
+            return pollTraktDeviceToken(deviceCode, intervalSeconds, attemptCount - 1);
+          });
         });
       }
 
@@ -193,7 +253,7 @@
         byId("JellyRecConfigForm").addEventListener("submit", function (event) {
           event.preventDefault();
           Dashboard.showLoadingMsg();
-          ApiClient.updatePluginConfiguration(pluginId, readForm())
+          saveConfig()
             .then(function (result) {
               return ensureFolder().then(function () {
                 return result;
@@ -233,6 +293,33 @@
             Dashboard.alert("Connected to Trakt successfully.");
           }).catch(function () {
             Dashboard.alert("Could not connect to Trakt. Check the client ID and access token.");
+          }).finally(hideLoading);
+        });
+
+        byId("ConnectTraktButton").addEventListener("click", function () {
+          const config = readForm();
+          if (!config.TraktClientId || !config.TraktClientSecret) {
+            Dashboard.alert("Enter your Trakt client ID and client secret first.");
+            return;
+          }
+
+          Dashboard.showLoadingMsg();
+          saveConfig(config).then(function () {
+            return ApiClient.ajax({
+              type: "POST",
+              url: ApiClient.getUrl("JellyRec/Trakt/DeviceCode"),
+              data: JSON.stringify(readForm()),
+              contentType: "application/json"
+            });
+          }).then(function (result) {
+            const verificationUrl = result.verificationUrl || "https://trakt.tv/activate";
+            const userCode = result.userCode || "";
+            Dashboard.alert("Open " + verificationUrl + " and enter code: " + userCode);
+            return pollTraktDeviceToken(result.deviceCode, result.interval || 5, Math.ceil((result.expiresIn || 600) / Math.max(5, result.interval || 5)));
+          }).then(function () {
+            Dashboard.alert("Trakt is connected.");
+          }).catch(function (error) {
+            Dashboard.alert("Could not connect Trakt: " + (error && error.message ? error.message : "authorization failed"));
           }).finally(hideLoading);
         });
 

@@ -25,6 +25,73 @@ public sealed class TraktApiClient
         return response.IsSuccessStatusCode;
     }
 
+    public async Task<TraktDeviceCodeResponse> BeginDeviceAuthorizationAsync(PluginConfiguration config, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(config.TraktClientId))
+        {
+            throw new InvalidOperationException("Trakt client ID is required.");
+        }
+
+        using var response = await _httpClient.PostAsJsonAsync(
+            "https://api.trakt.tv/oauth/device/code",
+            new { client_id = config.TraktClientId },
+            JsonOptions,
+            cancellationToken).ConfigureAwait(false);
+
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<TraktDeviceCodeResponse>(JsonOptions, cancellationToken).ConfigureAwait(false);
+        return result ?? throw new InvalidOperationException("Trakt returned an empty device authorization response.");
+    }
+
+    public async Task<TraktTokenPollResult> PollDeviceTokenAsync(PluginConfiguration config, string deviceCode, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(config.TraktClientId) || string.IsNullOrWhiteSpace(config.TraktClientSecret))
+        {
+            throw new InvalidOperationException("Trakt client ID and client secret are required.");
+        }
+
+        using var response = await _httpClient.PostAsJsonAsync(
+            "https://api.trakt.tv/oauth/device/token",
+            new
+            {
+                code = deviceCode,
+                client_id = config.TraktClientId,
+                client_secret = config.TraktClientSecret
+            },
+            JsonOptions,
+            cancellationToken).ConfigureAwait(false);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var token = await response.Content.ReadFromJsonAsync<TraktTokenResponse>(JsonOptions, cancellationToken).ConfigureAwait(false);
+            return TraktTokenPollResult.Approved(token ?? throw new InvalidOperationException("Trakt returned an empty token response."));
+        }
+
+        var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        if (content.Contains("authorization_pending", StringComparison.OrdinalIgnoreCase))
+        {
+            return TraktTokenPollResult.Pending();
+        }
+
+        if (content.Contains("slow_down", StringComparison.OrdinalIgnoreCase))
+        {
+            return TraktTokenPollResult.SlowDown();
+        }
+
+        if (content.Contains("expired_token", StringComparison.OrdinalIgnoreCase))
+        {
+            return TraktTokenPollResult.Expired();
+        }
+
+        if (content.Contains("access_denied", StringComparison.OrdinalIgnoreCase))
+        {
+            return TraktTokenPollResult.Denied();
+        }
+
+        _logger.LogWarning("Trakt device token poll failed with {StatusCode}: {Response}", response.StatusCode, content);
+        return TraktTokenPollResult.Failed();
+    }
+
     public async Task<List<RecommendationItem>> GetPersonalRecommendationsAsync(PluginConfiguration config, int limit, CancellationToken cancellationToken)
     {
         var results = new List<RecommendationItem>();
@@ -121,4 +188,53 @@ public sealed class TraktApiClient
         request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {config.TraktAccessToken}");
         return request;
     }
+}
+
+public sealed class TraktDeviceCodeResponse
+{
+    public string DeviceCode { get; set; } = string.Empty;
+
+    public string UserCode { get; set; } = string.Empty;
+
+    public string VerificationUrl { get; set; } = string.Empty;
+
+    public int ExpiresIn { get; set; }
+
+    public int Interval { get; set; } = 5;
+}
+
+public sealed class TraktTokenResponse
+{
+    public string AccessToken { get; set; } = string.Empty;
+
+    public string RefreshToken { get; set; } = string.Empty;
+
+    public int ExpiresIn { get; set; }
+
+    public string TokenType { get; set; } = string.Empty;
+}
+
+public sealed class TraktTokenPollResult
+{
+    private TraktTokenPollResult(string status, TraktTokenResponse? token = null)
+    {
+        Status = status;
+        Token = token;
+    }
+
+    public string Status { get; }
+
+    public TraktTokenResponse? Token { get; }
+
+    public static TraktTokenPollResult Approved(TraktTokenResponse token) => new("approved", token);
+
+    public static TraktTokenPollResult Pending() => new("pending");
+
+    public static TraktTokenPollResult SlowDown() => new("slow_down");
+
+    public static TraktTokenPollResult Expired() => new("expired");
+
+    public static TraktTokenPollResult Denied() => new("denied");
+
+    public static TraktTokenPollResult Failed() => new("failed");
 }

@@ -9,6 +9,17 @@
     "repositoryUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin",
     "versions":  [
                      {
+                         "version":  "0.1.15.0",
+                         "changelog":  "Add Trakt device-code connection flow",
+                         "targetAbi":  "10.11.0.0",
+                         "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.15.0.zip",
+                         "checksum":  "EBD08FD854961C5ABB69B91CE57C5A37",
+                         "timestamp":  "2026-07-05T18:58:43.495Z",
+                         "dependencies":  [
+
+                                          ]
+                     },
+                     {
                          "version":  "0.1.14.0",
                          "changelog":  "Make plugin configuration actions reliable in Jellyfin",
                          "targetAbi":  "10.11.0.0",

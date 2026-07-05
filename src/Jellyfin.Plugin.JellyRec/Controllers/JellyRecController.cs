@@ -42,6 +42,31 @@ public sealed class JellyRecController : ControllerBase
         return await _traktApiClient.TestConnectionAsync(config, cancellationToken).ConfigureAwait(false) ? Ok() : Unauthorized();
     }
 
+    [HttpPost("Trakt/DeviceCode")]
+    public async Task<ActionResult> BeginTraktDeviceAuthorization([FromBody] PluginConfiguration config, CancellationToken cancellationToken)
+    {
+        var response = await _traktApiClient.BeginDeviceAuthorizationAsync(config, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost("Trakt/DeviceToken")]
+    public async Task<ActionResult> PollTraktDeviceToken([FromBody] TraktDeviceTokenRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _traktApiClient.PollDeviceTokenAsync(request.Configuration, request.DeviceCode, cancellationToken).ConfigureAwait(false);
+        if (result.Token is null)
+        {
+            return Ok(new { status = result.Status });
+        }
+
+        return Ok(new
+        {
+            status = result.Status,
+            accessToken = result.Token.AccessToken,
+            refreshToken = result.Token.RefreshToken,
+            expiresAtUtc = DateTime.UtcNow.AddSeconds(result.Token.ExpiresIn)
+        });
+    }
+
     [HttpPost("EnsureRecommendationFolder")]
     public async Task<ActionResult> EnsureRecommendationFolder([FromBody] PluginConfiguration config, CancellationToken cancellationToken)
     {
@@ -56,4 +81,11 @@ public sealed class JellyRecController : ControllerBase
         _logger.LogInformation("Manual JellyRec refresh wrote {Count} recommendations", recommendations.Count);
         return Ok(new { count = recommendations.Count });
     }
+}
+
+public sealed class TraktDeviceTokenRequest
+{
+    public PluginConfiguration Configuration { get; set; } = new();
+
+    public string DeviceCode { get; set; } = string.Empty;
 }

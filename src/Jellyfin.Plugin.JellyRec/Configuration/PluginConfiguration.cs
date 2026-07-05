@@ -20,7 +20,13 @@ public sealed class PluginConfiguration : BasePluginConfiguration
 
     public string TraktClientId { get; set; } = string.Empty;
 
+    public string TraktClientSecret { get; set; } = string.Empty;
+
     public string TraktAccessToken { get; set; } = string.Empty;
+
+    public string TraktRefreshToken { get; set; } = string.Empty;
+
+    public DateTime? TraktAccessTokenExpiresAtUtc { get; set; }
 
     public int TraktWeight { get; set; } = 3;
 
