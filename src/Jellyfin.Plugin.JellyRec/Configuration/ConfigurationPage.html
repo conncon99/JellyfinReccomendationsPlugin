@@ -17,52 +17,55 @@
           <input is="emby-input" id="ApiKey" type="password" label="API Key" />
         </div>
         <div class="inputContainer">
-          <input is="emby-input" id="RecommendationLibraryPath" type="text" label="Recommendation Library Directory" />
-        </div>
-        <div class="inputContainer">
-          <input is="emby-input" id="SourceLibraryPaths" type="text" label="Source Library Paths (semicolon separated)" />
-        </div>
-        <label class="checkboxContainer">
-          <input is="emby-checkbox" type="checkbox" id="EnableTraktRecommendations" />
-          <span>Use Trakt personal recommendations</span>
-        </label>
-        <div class="inputContainer">
           <input is="emby-input" id="TraktClientId" type="text" label="Trakt Client ID" />
         </div>
         <div class="inputContainer">
           <input is="emby-input" id="TraktAccessToken" type="password" label="Trakt Access Token" />
         </div>
-        <label class="checkboxContainer">
-          <input is="emby-checkbox" type="checkbox" id="EnableSeerrRecommendations" />
-          <span>Use Seerr/TMDb similar-title fallback</span>
-        </label>
         <div class="inputContainer">
-          <input is="emby-input" id="TraktWeight" type="number" min="1" max="20" label="Trakt Recommendation Weight" />
-        </div>
-        <div class="inputContainer">
-          <input is="emby-input" id="SeerrWeight" type="number" min="1" max="20" label="Seerr Recommendation Weight" />
-        </div>
-        <div class="inputContainer">
-          <input is="emby-input" id="RecentlyWatchedLimit" type="number" min="1" max="100" label="Recently Watched Limit" />
-        </div>
-        <div class="inputContainer">
-          <input is="emby-input" id="RecommendationsPerSeed" type="number" min="1" max="50" label="Recommendations Per Watched Item" />
-        </div>
-        <div class="inputContainer">
-          <input is="emby-input" id="MaxRecommendations" type="number" min="1" max="500" label="Maximum Recommendations" />
-        </div>
-        <div class="inputContainer">
-          <input is="emby-input" id="RefreshIntervalHours" type="number" min="1" max="720" label="Refresh Interval Hours" />
+          <input is="emby-input" id="RecommendationLibraryPath" type="text" label="Recommendation Library Directory" />
         </div>
 
-        <label class="checkboxContainer">
-          <input is="emby-checkbox" type="checkbox" id="RequestOnlyFirstSeason" />
-          <span>Request only season 1 for TV shows</span>
-        </label>
-        <label class="checkboxContainer">
-          <input is="emby-checkbox" type="checkbox" id="RemoveAfterRequest" />
-          <span>Remove recommendation placeholder after creating a request</span>
-        </label>
+        <details class="verticalSection">
+          <summary>Advanced</summary>
+          <div class="inputContainer">
+            <input is="emby-input" id="SourceLibraryPaths" type="text" label="Source Library Paths (semicolon separated)" />
+          </div>
+          <label class="checkboxContainer">
+            <input is="emby-checkbox" type="checkbox" id="EnableTraktRecommendations" />
+            <span>Use Trakt personal recommendations</span>
+          </label>
+          <label class="checkboxContainer">
+            <input is="emby-checkbox" type="checkbox" id="EnableSeerrRecommendations" />
+            <span>Use Seerr/TMDb similar-title fallback</span>
+          </label>
+          <div class="inputContainer">
+            <input is="emby-input" id="TraktWeight" type="number" min="1" max="20" label="Trakt Recommendation Weight" />
+          </div>
+          <div class="inputContainer">
+            <input is="emby-input" id="SeerrWeight" type="number" min="1" max="20" label="Seerr Recommendation Weight" />
+          </div>
+          <div class="inputContainer">
+            <input is="emby-input" id="RecentlyWatchedLimit" type="number" min="1" max="100" label="Recently Watched Limit" />
+          </div>
+          <div class="inputContainer">
+            <input is="emby-input" id="RecommendationsPerSeed" type="number" min="1" max="50" label="Recommendations Per Watched Item" />
+          </div>
+          <div class="inputContainer">
+            <input is="emby-input" id="MaxRecommendations" type="number" min="1" max="500" label="Maximum Recommendations" />
+          </div>
+          <div class="inputContainer">
+            <input is="emby-input" id="RefreshIntervalHours" type="number" min="1" max="720" label="Refresh Interval Hours" />
+          </div>
+          <label class="checkboxContainer">
+            <input is="emby-checkbox" type="checkbox" id="RequestOnlyFirstSeason" />
+            <span>Request only season 1 for TV shows</span>
+          </label>
+          <label class="checkboxContainer">
+            <input is="emby-checkbox" type="checkbox" id="RemoveAfterRequest" />
+            <span>Remove recommendation placeholder after creating a request</span>
+          </label>
+        </details>
 
         <div>
           <button is="emby-button" type="button" id="TestConnectionButton" class="raised button-submit block">

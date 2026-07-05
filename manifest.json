@@ -9,6 +9,17 @@
     "repositoryUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin",
     "versions":  [
                      {
+                         "version":  "0.1.13.0",
+                         "changelog":  "Simplify setup with sensible defaults and advanced options",
+                         "targetAbi":  "10.11.0.0",
+                         "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.13.0.zip",
+                         "checksum":  "E7313165080C840B7778453DA7861E0F",
+                         "timestamp":  "2026-07-05T18:45:38.591Z",
+                         "dependencies":  [
+
+                                          ]
+                     },
+                     {
                          "version":  "0.1.12.0",
                          "changelog":  "Create and verify recommendation folder from plugin configuration",
                          "targetAbi":  "10.11.0.0",

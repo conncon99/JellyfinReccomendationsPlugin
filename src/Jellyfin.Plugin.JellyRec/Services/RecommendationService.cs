@@ -1,4 +1,5 @@
 using Jellyfin.Data.Enums;
+using Jellyfin.Plugin.JellyRec.Configuration;
 using Jellyfin.Plugin.JellyRec.Models;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
@@ -48,7 +49,7 @@ public sealed class RecommendationService
         var seeds = GetWatchedSeeds(config.RecentlyWatchedLimit);
         var candidates = new List<RecommendationItem>();
 
-        if (config.EnableTraktRecommendations)
+        if (config.EnableTraktRecommendations && HasTraktCredentials(config))
         {
             var trakt = await _traktApiClient.GetPersonalRecommendationsAsync(config, config.MaxRecommendations, cancellationToken).ConfigureAwait(false);
             foreach (var item in trakt)
@@ -59,7 +60,7 @@ public sealed class RecommendationService
             candidates.AddRange(trakt);
         }
 
-        if (config.EnableSeerrRecommendations)
+        if (config.EnableSeerrRecommendations && HasSeerrCredentials(config))
         {
             foreach (var seed in seeds)
             {
@@ -185,6 +186,18 @@ public sealed class RecommendationService
         return string.Equals(mediaType, "tv", StringComparison.OrdinalIgnoreCase) ? "tv" :
             string.Equals(mediaType, "movie", StringComparison.OrdinalIgnoreCase) ? "movie" :
             fallback;
+    }
+
+    private static bool HasTraktCredentials(PluginConfiguration config)
+    {
+        return !string.IsNullOrWhiteSpace(config.TraktClientId) &&
+            !string.IsNullOrWhiteSpace(config.TraktAccessToken);
+    }
+
+    private static bool HasSeerrCredentials(PluginConfiguration config)
+    {
+        return !string.IsNullOrWhiteSpace(config.SeerrUrl) &&
+            !string.IsNullOrWhiteSpace(config.ApiKey);
     }
 
     private static bool IsInPath(string? itemPath, string libraryPath)

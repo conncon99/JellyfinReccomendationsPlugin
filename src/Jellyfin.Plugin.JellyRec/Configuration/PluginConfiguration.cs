@@ -6,7 +6,7 @@ public sealed class PluginConfiguration : BasePluginConfiguration
 {
     public bool Enabled { get; set; }
 
-    public string SeerrUrl { get; set; } = "http://localhost:5055";
+    public string SeerrUrl { get; set; } = "http://seerr:5055";
 
     public string ApiKey { get; set; } = string.Empty;
 

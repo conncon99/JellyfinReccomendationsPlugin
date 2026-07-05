@@ -1,5 +1,24 @@
 (function () {
   const pluginId = "1d1af7ee-7c42-42a0-9f03-d202274e68d5";
+  const defaults = {
+    Enabled: false,
+    SeerrUrl: "http://seerr:5055",
+    ApiKey: "",
+    RecommendationLibraryPath: "",
+    SourceLibraryPaths: "",
+    EnableTraktRecommendations: true,
+    TraktClientId: "",
+    TraktAccessToken: "",
+    EnableSeerrRecommendations: true,
+    TraktWeight: 3,
+    SeerrWeight: 1,
+    RecentlyWatchedLimit: 20,
+    RecommendationsPerSeed: 8,
+    MaxRecommendations: 100,
+    RefreshIntervalHours: 24,
+    RequestOnlyFirstSeason: true,
+    RemoveAfterRequest: true
+  };
 
   function byId(id) {
     return document.getElementById(id);
@@ -8,7 +27,7 @@
   function readForm() {
     return {
       Enabled: byId("Enabled").checked,
-      SeerrUrl: byId("SeerrUrl").value,
+      SeerrUrl: byId("SeerrUrl").value || defaults.SeerrUrl,
       ApiKey: byId("ApiKey").value,
       RecommendationLibraryPath: byId("RecommendationLibraryPath").value,
       SourceLibraryPaths: byId("SourceLibraryPaths").value,
@@ -16,20 +35,21 @@
       TraktClientId: byId("TraktClientId").value,
       TraktAccessToken: byId("TraktAccessToken").value,
       EnableSeerrRecommendations: byId("EnableSeerrRecommendations").checked,
-      TraktWeight: Number(byId("TraktWeight").value || 3),
-      SeerrWeight: Number(byId("SeerrWeight").value || 1),
-      RecentlyWatchedLimit: Number(byId("RecentlyWatchedLimit").value || 20),
-      RecommendationsPerSeed: Number(byId("RecommendationsPerSeed").value || 8),
-      MaxRecommendations: Number(byId("MaxRecommendations").value || 100),
-      RefreshIntervalHours: Number(byId("RefreshIntervalHours").value || 24),
+      TraktWeight: Number(byId("TraktWeight").value || defaults.TraktWeight),
+      SeerrWeight: Number(byId("SeerrWeight").value || defaults.SeerrWeight),
+      RecentlyWatchedLimit: Number(byId("RecentlyWatchedLimit").value || defaults.RecentlyWatchedLimit),
+      RecommendationsPerSeed: Number(byId("RecommendationsPerSeed").value || defaults.RecommendationsPerSeed),
+      MaxRecommendations: Number(byId("MaxRecommendations").value || defaults.MaxRecommendations),
+      RefreshIntervalHours: Number(byId("RefreshIntervalHours").value || defaults.RefreshIntervalHours),
       RequestOnlyFirstSeason: byId("RequestOnlyFirstSeason").checked,
       RemoveAfterRequest: byId("RemoveAfterRequest").checked
     };
   }
 
   function writeForm(config) {
+    config = Object.assign({}, defaults, config || {});
     byId("Enabled").checked = !!config.Enabled;
-    byId("SeerrUrl").value = config.SeerrUrl || "";
+    byId("SeerrUrl").value = config.SeerrUrl || defaults.SeerrUrl;
     byId("ApiKey").value = config.ApiKey || "";
     byId("RecommendationLibraryPath").value = config.RecommendationLibraryPath || "";
     byId("SourceLibraryPaths").value = config.SourceLibraryPaths || "";
@@ -37,12 +57,12 @@
     byId("TraktClientId").value = config.TraktClientId || "";
     byId("TraktAccessToken").value = config.TraktAccessToken || "";
     byId("EnableSeerrRecommendations").checked = config.EnableSeerrRecommendations !== false;
-    byId("TraktWeight").value = config.TraktWeight || 3;
-    byId("SeerrWeight").value = config.SeerrWeight || 1;
-    byId("RecentlyWatchedLimit").value = config.RecentlyWatchedLimit || 20;
-    byId("RecommendationsPerSeed").value = config.RecommendationsPerSeed || 8;
-    byId("MaxRecommendations").value = config.MaxRecommendations || 100;
-    byId("RefreshIntervalHours").value = config.RefreshIntervalHours || 24;
+    byId("TraktWeight").value = config.TraktWeight || defaults.TraktWeight;
+    byId("SeerrWeight").value = config.SeerrWeight || defaults.SeerrWeight;
+    byId("RecentlyWatchedLimit").value = config.RecentlyWatchedLimit || defaults.RecentlyWatchedLimit;
+    byId("RecommendationsPerSeed").value = config.RecommendationsPerSeed || defaults.RecommendationsPerSeed;
+    byId("MaxRecommendations").value = config.MaxRecommendations || defaults.MaxRecommendations;
+    byId("RefreshIntervalHours").value = config.RefreshIntervalHours || defaults.RefreshIntervalHours;
     byId("RequestOnlyFirstSeason").checked = config.RequestOnlyFirstSeason !== false;
     byId("RemoveAfterRequest").checked = config.RemoveAfterRequest !== false;
   }
