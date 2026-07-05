@@ -14,6 +14,7 @@ public sealed class JellyRecController : ControllerBase
     private readonly SeerrApiClient _seerrApiClient;
     private readonly TraktApiClient _traktApiClient;
     private readonly RecommendationService _recommendationService;
+    private readonly RecommendationLibraryWriter _writer;
     private readonly RecommendationFolderManager _folderManager;
     private readonly ILogger<JellyRecController> _logger;
 
@@ -21,12 +22,14 @@ public sealed class JellyRecController : ControllerBase
         SeerrApiClient seerrApiClient,
         TraktApiClient traktApiClient,
         RecommendationService recommendationService,
+        RecommendationLibraryWriter writer,
         RecommendationFolderManager folderManager,
         ILogger<JellyRecController> logger)
     {
         _seerrApiClient = seerrApiClient;
         _traktApiClient = traktApiClient;
         _recommendationService = recommendationService;
+        _writer = writer;
         _folderManager = folderManager;
         _logger = logger;
     }
@@ -116,7 +119,14 @@ public sealed class JellyRecController : ControllerBase
     {
         var recommendations = await _recommendationService.RefreshAsync(cancellationToken).ConfigureAwait(false);
         _logger.LogInformation("Manual JellyRec refresh wrote {Count} recommendations", recommendations.Count);
-        return Ok(new { count = recommendations.Count });
+        return Ok(new { count = recommendations.Count, recommendations });
+    }
+
+    [HttpGet("Recommendations")]
+    public ActionResult GetRecommendations()
+    {
+        var recommendations = _writer.ReadAll(Plugin.Config);
+        return Ok(new { count = recommendations.Count, recommendations });
     }
 
     private ContentResult JsonContent(Dictionary<string, object?> payload)

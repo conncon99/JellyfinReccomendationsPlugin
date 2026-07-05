@@ -9,6 +9,17 @@
     "repositoryUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin",
     "versions":  [
                      {
+                         "version":  "0.1.27.0",
+                         "changelog":  "Add visual recommendations carousel to plugin configuration",
+                         "targetAbi":  "10.11.0.0",
+                         "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.27.0.zip",
+                         "checksum":  "4A0288BC6BBFBBE4627CBD062D912FD9",
+                         "timestamp":  "2026-07-05T19:51:20.381Z",
+                         "dependencies":  [
+
+                                          ]
+                     },
+                     {
                          "version":  "0.1.26.0",
                          "changelog":  "Keep Trakt activation code visible during connection",
                          "targetAbi":  "10.11.0.0",

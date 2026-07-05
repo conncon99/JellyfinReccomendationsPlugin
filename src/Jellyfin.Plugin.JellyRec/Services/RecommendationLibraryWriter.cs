@@ -47,6 +47,38 @@ public sealed class RecommendationLibraryWriter
         _logger.LogInformation("Wrote {Count} recommendation placeholders to {Path}", recommendations.Count, libraryRoot);
     }
 
+    public IReadOnlyList<RecommendationItem> ReadAll(PluginConfiguration config)
+    {
+        var libraryRoot = _folderManager.ResolveRecommendationPath(config);
+        if (string.IsNullOrWhiteSpace(libraryRoot) || !Directory.Exists(libraryRoot))
+        {
+            return Array.Empty<RecommendationItem>();
+        }
+
+        var recommendations = new List<RecommendationItem>();
+        foreach (var metadataPath in Directory.EnumerateFiles(libraryRoot, MetadataFileName, SearchOption.AllDirectories))
+        {
+            try
+            {
+                var json = File.ReadAllText(metadataPath);
+                var item = JsonSerializer.Deserialize<RecommendationItem>(json, JsonOptions);
+                if (item is not null && item.TmdbId > 0 && !string.IsNullOrWhiteSpace(item.Title))
+                {
+                    recommendations.Add(item);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not read JellyRec recommendation metadata at {Path}", metadataPath);
+            }
+        }
+
+        return recommendations
+            .OrderByDescending(item => item.Score)
+            .ThenBy(item => item.Title)
+            .ToList();
+    }
+
     public static RecommendationItem? TryReadMetadataForPath(string libraryRoot, string? itemPath)
     {
         if (string.IsNullOrWhiteSpace(itemPath) || string.IsNullOrWhiteSpace(libraryRoot))
