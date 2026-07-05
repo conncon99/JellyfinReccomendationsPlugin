@@ -189,6 +189,45 @@
         return ApiClient.updatePluginConfiguration(pluginId, config || readForm());
       }
 
+      function valueOf(object, camelName, snakeName, fallback) {
+        if (!object) {
+          return fallback;
+        }
+
+        if (object[camelName] !== undefined && object[camelName] !== null) {
+          return object[camelName];
+        }
+
+        if (object[snakeName] !== undefined && object[snakeName] !== null) {
+          return object[snakeName];
+        }
+
+        return fallback;
+      }
+
+      function errorMessage(error) {
+        if (!error) {
+          return "authorization failed";
+        }
+
+        if (error.responseJSON && error.responseJSON.message) {
+          return error.responseJSON.message;
+        }
+
+        if (error.responseText) {
+          try {
+            const parsed = JSON.parse(error.responseText);
+            if (parsed.message) {
+              return parsed.message;
+            }
+          } catch (ignored) {
+            return error.responseText;
+          }
+        }
+
+        return error.message || error.statusText || "authorization failed";
+      }
+
       function pollTraktDeviceToken(deviceCode, intervalSeconds, attemptCount) {
         return ApiClient.ajax({
           type: "POST",
@@ -312,14 +351,21 @@
               contentType: "application/json"
             });
           }).then(function (result) {
-            const verificationUrl = result.verificationUrl || "https://trakt.tv/activate";
-            const userCode = result.userCode || "";
+            const verificationUrl = valueOf(result, "verificationUrl", "verification_url", "https://trakt.tv/activate");
+            const userCode = valueOf(result, "userCode", "user_code", "");
+            const deviceCode = valueOf(result, "deviceCode", "device_code", "");
+            const interval = valueOf(result, "interval", "interval", 5);
+            const expiresIn = valueOf(result, "expiresIn", "expires_in", 600);
+            if (!deviceCode || !userCode) {
+              throw new Error("Trakt did not return a device code.");
+            }
+
             Dashboard.alert("Open " + verificationUrl + " and enter code: " + userCode);
-            return pollTraktDeviceToken(result.deviceCode, result.interval || 5, Math.ceil((result.expiresIn || 600) / Math.max(5, result.interval || 5)));
+            return pollTraktDeviceToken(deviceCode, interval || 5, Math.ceil((expiresIn || 600) / Math.max(5, interval || 5)));
           }).then(function () {
             Dashboard.alert("Trakt is connected.");
           }).catch(function (error) {
-            const reason = error && error.message ? error.message : "authorization failed";
+            const reason = errorMessage(error);
             const message = reason === "invalid_client"
               ? "Trakt rejected the client ID or client secret."
               : reason === "invalid_grant"

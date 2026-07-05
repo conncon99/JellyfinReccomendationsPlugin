@@ -45,26 +45,49 @@ public sealed class JellyRecController : ControllerBase
     [HttpPost("Trakt/DeviceCode")]
     public async Task<ActionResult> BeginTraktDeviceAuthorization([FromBody] PluginConfiguration config, CancellationToken cancellationToken)
     {
-        var response = await _traktApiClient.BeginDeviceAuthorizationAsync(config, cancellationToken).ConfigureAwait(false);
-        return Ok(response);
+        try
+        {
+            var response = await _traktApiClient.BeginDeviceAuthorizationAsync(config, cancellationToken).ConfigureAwait(false);
+            return Ok(new
+            {
+                deviceCode = response.DeviceCode,
+                userCode = response.UserCode,
+                verificationUrl = response.VerificationUrl,
+                expiresIn = response.ExpiresIn,
+                interval = response.Interval
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to start Trakt device authorization");
+            return BadRequest(new { status = "failed", message = ex.Message });
+        }
     }
 
     [HttpPost("Trakt/DeviceToken")]
     public async Task<ActionResult> PollTraktDeviceToken([FromBody] TraktDeviceTokenRequest request, CancellationToken cancellationToken)
     {
-        var result = await _traktApiClient.PollDeviceTokenAsync(request.Configuration, request.DeviceCode, cancellationToken).ConfigureAwait(false);
-        if (result.Token is null)
+        try
         {
-            return Ok(new { status = result.Status });
-        }
+            var result = await _traktApiClient.PollDeviceTokenAsync(request.Configuration, request.DeviceCode, cancellationToken).ConfigureAwait(false);
+            if (result.Token is null)
+            {
+                return Ok(new { status = result.Status });
+            }
 
-        return Ok(new
+            return Ok(new
+            {
+                status = result.Status,
+                accessToken = result.Token.AccessToken,
+                refreshToken = result.Token.RefreshToken,
+                expiresAtUtc = DateTime.UtcNow.AddSeconds(result.Token.ExpiresIn)
+            });
+        }
+        catch (Exception ex)
         {
-            status = result.Status,
-            accessToken = result.Token.AccessToken,
-            refreshToken = result.Token.RefreshToken,
-            expiresAtUtc = DateTime.UtcNow.AddSeconds(result.Token.ExpiresIn)
-        });
+            _logger.LogError(ex, "Failed to poll Trakt device authorization");
+            return BadRequest(new { status = "failed", message = ex.Message });
+        }
     }
 
     [HttpPost("EnsureRecommendationFolder")]
