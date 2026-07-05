@@ -112,8 +112,9 @@ public sealed class TraktApiClient
             return TraktTokenPollResult.InvalidGrant();
         }
 
-        _logger.LogWarning("Trakt device token poll failed with {StatusCode}: {Response}", response.StatusCode, content);
-        return TraktTokenPollResult.Failed();
+        var message = $"Trakt token poll failed ({(int)response.StatusCode} {response.StatusCode}): {content}";
+        _logger.LogWarning("{Message}", message);
+        return TraktTokenPollResult.Failed(message);
     }
 
     public async Task<List<RecommendationItem>> GetPersonalRecommendationsAsync(PluginConfiguration config, int limit, CancellationToken cancellationToken)
@@ -268,15 +269,18 @@ public sealed class TraktTokenResponse
 
 public sealed class TraktTokenPollResult
 {
-    private TraktTokenPollResult(string status, TraktTokenResponse? token = null)
+    private TraktTokenPollResult(string status, TraktTokenResponse? token = null, string? message = null)
     {
         Status = status;
         Token = token;
+        Message = message;
     }
 
     public string Status { get; }
 
     public TraktTokenResponse? Token { get; }
+
+    public string? Message { get; }
 
     public static TraktTokenPollResult Approved(TraktTokenResponse token) => new("approved", token);
 
@@ -292,5 +296,5 @@ public sealed class TraktTokenPollResult
 
     public static TraktTokenPollResult InvalidGrant() => new("invalid_grant");
 
-    public static TraktTokenPollResult Failed() => new("failed");
+    public static TraktTokenPollResult Failed(string? message = null) => new("failed", message: message);
 }

@@ -80,7 +80,8 @@ public sealed class JellyRecController : ControllerBase
             {
                 return JsonContent(new Dictionary<string, object?>
                 {
-                    ["status"] = result.Status
+                    ["status"] = result.Status,
+                    ["message"] = result.Message
                 });
             }
 

@@ -9,6 +9,17 @@
     "repositoryUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin",
     "versions":  [
                      {
+                         "version":  "0.1.24.0",
+                         "changelog":  "Show detailed Trakt token polling failures",
+                         "targetAbi":  "10.11.0.0",
+                         "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.24.0.zip",
+                         "checksum":  "142DEE8B8EB27CF53E06391DD6FEFBCA",
+                         "timestamp":  "2026-07-05T19:33:53.940Z",
+                         "dependencies":  [
+
+                                          ]
+                     },
+                     {
                          "version":  "0.1.23.0",
                          "changelog":  "Return Trakt auth JSON as explicit content",
                          "targetAbi":  "10.11.0.0",

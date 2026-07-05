@@ -274,7 +274,7 @@
           }
 
           if (result && (result.status === "expired" || result.status === "denied" || result.status === "failed" || result.status === "invalid_client" || result.status === "invalid_grant")) {
-            throw new Error(result.status);
+            throw new Error(result.message || result.status);
           }
 
           if (attemptCount <= 0) {
