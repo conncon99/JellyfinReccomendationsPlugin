@@ -33,13 +33,18 @@ public sealed class TraktApiClient
             throw new InvalidOperationException("Trakt client ID is required.");
         }
 
-        using var response = await _httpClient.PostAsJsonAsync(
+        using var request = BuildTraktJsonRequest(
+            config,
             "https://api.trakt.tv/oauth/device/code",
-            new { client_id = config.TraktClientId },
-            JsonOptions,
-            cancellationToken).ConfigureAwait(false);
+            new { client_id = config.TraktClientId });
+        using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            throw new InvalidOperationException($"Trakt device authorization failed ({(int)response.StatusCode} {response.StatusCode}): {content}");
+        }
+
         var result = await response.Content.ReadFromJsonAsync<TraktDeviceCodeResponse>(JsonOptions, cancellationToken).ConfigureAwait(false);
         return result ?? throw new InvalidOperationException("Trakt returned an empty device authorization response.");
     }
@@ -51,16 +56,16 @@ public sealed class TraktApiClient
             throw new InvalidOperationException("Trakt client ID and client secret are required.");
         }
 
-        using var response = await _httpClient.PostAsJsonAsync(
+        using var request = BuildTraktJsonRequest(
+            config,
             "https://api.trakt.tv/oauth/device/token",
             new
             {
                 code = deviceCode,
                 client_id = config.TraktClientId,
                 client_secret = config.TraktClientSecret
-            },
-            JsonOptions,
-            cancellationToken).ConfigureAwait(false);
+            });
+        using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
         if (response.IsSuccessStatusCode)
         {
@@ -197,6 +202,17 @@ public sealed class TraktApiClient
         request.Headers.TryAddWithoutValidation("trakt-api-version", "2");
         request.Headers.TryAddWithoutValidation("trakt-api-key", config.TraktClientId);
         request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {config.TraktAccessToken}");
+        return request;
+    }
+
+    private static HttpRequestMessage BuildTraktJsonRequest<T>(PluginConfiguration config, string url, T body)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = JsonContent.Create(body, options: JsonOptions)
+        };
+        request.Headers.TryAddWithoutValidation("trakt-api-version", "2");
+        request.Headers.TryAddWithoutValidation("trakt-api-key", config.TraktClientId);
         return request;
     }
 }

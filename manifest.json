@@ -9,6 +9,17 @@
     "repositoryUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin",
     "versions":  [
                      {
+                         "version":  "0.1.18.0",
+                         "changelog":  "Add Trakt OAuth request headers and detailed errors",
+                         "targetAbi":  "10.11.0.0",
+                         "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.18.0.zip",
+                         "checksum":  "7C3A40BBB113F3C4B1A13EC4B7324748",
+                         "timestamp":  "2026-07-05T19:10:06.557Z",
+                         "dependencies":  [
+
+                                          ]
+                     },
+                     {
                          "version":  "0.1.17.0",
                          "changelog":  "Fix Trakt device auth response handling",
                          "targetAbi":  "10.11.0.0",
