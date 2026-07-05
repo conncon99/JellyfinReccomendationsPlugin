@@ -202,6 +202,11 @@
           return object[snakeName];
         }
 
+        const pascalName = camelName.charAt(0).toUpperCase() + camelName.slice(1);
+        if (object[pascalName] !== undefined && object[pascalName] !== null) {
+          return object[pascalName];
+        }
+
         return fallback;
       }
 
@@ -361,7 +366,7 @@
             const interval = valueOf(result, "interval", "interval", 5);
             const expiresIn = valueOf(result, "expiresIn", "expires_in", 600);
             if (!deviceCode || !userCode) {
-              throw new Error("Trakt did not return a device code.");
+              throw new Error("Trakt did not return a device code. Raw response: " + JSON.stringify(result));
             }
 
             Dashboard.alert("Open " + verificationUrl + " and enter code: " + userCode);

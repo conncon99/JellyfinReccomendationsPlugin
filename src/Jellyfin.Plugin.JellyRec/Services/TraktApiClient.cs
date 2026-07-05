@@ -47,8 +47,14 @@ public sealed class TraktApiClient
             throw new InvalidOperationException($"Trakt device authorization failed ({(int)response.StatusCode} {response.StatusCode}): {content}");
         }
 
-        var result = await response.Content.ReadFromJsonAsync<TraktDeviceCodeResponse>(JsonOptions, cancellationToken).ConfigureAwait(false);
-        return result ?? throw new InvalidOperationException("Trakt returned an empty device authorization response.");
+        var responseJson = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        var result = JsonSerializer.Deserialize<TraktDeviceCodeResponse>(responseJson, JsonOptions);
+        if (result is null || string.IsNullOrWhiteSpace(result.DeviceCode) || string.IsNullOrWhiteSpace(result.UserCode))
+        {
+            throw new InvalidOperationException($"Trakt returned a device authorization response without a device code: {responseJson}");
+        }
+
+        return result;
     }
 
     public async Task<TraktTokenPollResult> PollDeviceTokenAsync(PluginConfiguration config, string deviceCode, CancellationToken cancellationToken)

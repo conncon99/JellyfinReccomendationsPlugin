@@ -9,6 +9,17 @@
     "repositoryUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin",
     "versions":  [
                      {
+                         "version":  "0.1.21.0",
+                         "changelog":  "Handle Trakt device-code response casing",
+                         "targetAbi":  "10.11.0.0",
+                         "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.21.0.zip",
+                         "checksum":  "D98AF73D4BD5A26048E0AB9E0856151B",
+                         "timestamp":  "2026-07-05T19:20:25.376Z",
+                         "dependencies":  [
+
+                                          ]
+                     },
+                     {
                          "version":  "0.1.20.0",
                          "changelog":  "Add Trakt request user agent headers",
                          "targetAbi":  "10.11.0.0",
