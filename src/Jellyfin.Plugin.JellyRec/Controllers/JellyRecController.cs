@@ -2,6 +2,7 @@ using Jellyfin.Plugin.JellyRec.Configuration;
 using Jellyfin.Plugin.JellyRec.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace Jellyfin.Plugin.JellyRec.Controllers;
 
@@ -9,6 +10,7 @@ namespace Jellyfin.Plugin.JellyRec.Controllers;
 [Route("JellyRec")]
 public sealed class JellyRecController : ControllerBase
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly SeerrApiClient _seerrApiClient;
     private readonly TraktApiClient _traktApiClient;
     private readonly RecommendationService _recommendationService;
@@ -48,7 +50,7 @@ public sealed class JellyRecController : ControllerBase
         try
         {
             var response = await _traktApiClient.BeginDeviceAuthorizationAsync(config, cancellationToken).ConfigureAwait(false);
-            return Ok(new Dictionary<string, object?>
+            return JsonContent(new Dictionary<string, object?>
             {
                 ["deviceCode"] = response.DeviceCode,
                 ["userCode"] = response.UserCode,
@@ -60,7 +62,7 @@ public sealed class JellyRecController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to start Trakt device authorization");
-            return Ok(new Dictionary<string, object?>
+            return JsonContent(new Dictionary<string, object?>
             {
                 ["status"] = "failed",
                 ["message"] = ex.Message
@@ -76,13 +78,13 @@ public sealed class JellyRecController : ControllerBase
             var result = await _traktApiClient.PollDeviceTokenAsync(request.Configuration, request.DeviceCode, cancellationToken).ConfigureAwait(false);
             if (result.Token is null)
             {
-                return Ok(new Dictionary<string, object?>
+                return JsonContent(new Dictionary<string, object?>
                 {
                     ["status"] = result.Status
                 });
             }
 
-            return Ok(new Dictionary<string, object?>
+            return JsonContent(new Dictionary<string, object?>
             {
                 ["status"] = result.Status,
                 ["accessToken"] = result.Token.AccessToken,
@@ -93,7 +95,7 @@ public sealed class JellyRecController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to poll Trakt device authorization");
-            return Ok(new Dictionary<string, object?>
+            return JsonContent(new Dictionary<string, object?>
             {
                 ["status"] = "failed",
                 ["message"] = ex.Message
@@ -114,6 +116,11 @@ public sealed class JellyRecController : ControllerBase
         var recommendations = await _recommendationService.RefreshAsync(cancellationToken).ConfigureAwait(false);
         _logger.LogInformation("Manual JellyRec refresh wrote {Count} recommendations", recommendations.Count);
         return Ok(new { count = recommendations.Count });
+    }
+
+    private ContentResult JsonContent(Dictionary<string, object?> payload)
+    {
+        return Content(JsonSerializer.Serialize(payload, JsonOptions), "application/json");
     }
 }
 

@@ -247,14 +247,15 @@
       }
 
       function pollTraktDeviceToken(deviceCode, intervalSeconds, attemptCount) {
-        return ApiClient.ajax({
-          type: "POST",
-          url: ApiClient.getUrl("JellyRec/Trakt/DeviceToken"),
-          data: JSON.stringify({
-            configuration: readForm(),
-            deviceCode: deviceCode
-          }),
-          contentType: "application/json"
+          return ApiClient.ajax({
+            type: "POST",
+            url: ApiClient.getUrl("JellyRec/Trakt/DeviceToken"),
+            data: JSON.stringify({
+              configuration: readForm(),
+              deviceCode: deviceCode
+            }),
+          contentType: "application/json",
+          dataType: "json"
         }).then(function (result) {
           result = normalizeResponse(result);
           if (result && result.status === "approved") {
@@ -367,7 +368,8 @@
               type: "POST",
               url: ApiClient.getUrl("JellyRec/Trakt/DeviceCode"),
               data: JSON.stringify(readForm()),
-              contentType: "application/json"
+              contentType: "application/json",
+              dataType: "json"
             });
           }).then(function (result) {
             result = normalizeResponse(result);

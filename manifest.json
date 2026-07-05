@@ -9,6 +9,17 @@
     "repositoryUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin",
     "versions":  [
                      {
+                         "version":  "0.1.23.0",
+                         "changelog":  "Return Trakt auth JSON as explicit content",
+                         "targetAbi":  "10.11.0.0",
+                         "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.23.0.zip",
+                         "checksum":  "E27EDB7350BE35070A491BB856E3D7FC",
+                         "timestamp":  "2026-07-05T19:26:45.870Z",
+                         "dependencies":  [
+
+                                          ]
+                     },
+                     {
                          "version":  "0.1.22.0",
                          "changelog":  "Return stable Trakt device auth response payloads",
                          "targetAbi":  "10.11.0.0",
