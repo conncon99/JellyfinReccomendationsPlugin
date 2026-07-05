@@ -9,6 +9,17 @@
     "repositoryUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin",
     "versions":  [
                      {
+                         "version":  "0.1.25.0",
+                         "changelog":  "Treat empty Trakt token polling bad requests as pending",
+                         "targetAbi":  "10.11.0.0",
+                         "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.25.0.zip",
+                         "checksum":  "17EC118BB3C59DE5DFF0B07456A00394",
+                         "timestamp":  "2026-07-05T19:37:40.318Z",
+                         "dependencies":  [
+
+                                          ]
+                     },
+                     {
                          "version":  "0.1.24.0",
                          "changelog":  "Show detailed Trakt token polling failures",
                          "targetAbi":  "10.11.0.0",

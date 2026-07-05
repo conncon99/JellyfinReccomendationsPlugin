@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Net.Http.Headers;
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Jellyfin.Plugin.JellyRec.Configuration;
@@ -82,6 +83,11 @@ public sealed class TraktApiClient
         }
 
         var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        if (response.StatusCode == HttpStatusCode.BadRequest && string.IsNullOrWhiteSpace(content))
+        {
+            return TraktTokenPollResult.Pending();
+        }
+
         if (content.Contains("authorization_pending", StringComparison.OrdinalIgnoreCase))
         {
             return TraktTokenPollResult.Pending();

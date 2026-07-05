@@ -387,7 +387,11 @@
             }
 
             Dashboard.alert("Open " + verificationUrl + " and enter code: " + userCode);
-            return pollTraktDeviceToken(deviceCode, interval || 5, Math.ceil((expiresIn || 600) / Math.max(5, interval || 5)));
+            return new Promise(function (resolve) {
+              setTimeout(resolve, Math.max(5, interval || 5) * 1000);
+            }).then(function () {
+              return pollTraktDeviceToken(deviceCode, interval || 5, Math.ceil((expiresIn || 600) / Math.max(5, interval || 5)));
+            });
           }).then(function () {
             Dashboard.alert("Trakt is connected.");
           }).catch(function (error) {
