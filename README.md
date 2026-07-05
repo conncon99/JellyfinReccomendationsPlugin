@@ -21,13 +21,12 @@ The easiest remote test loop is:
 
 1. Push this project to GitHub.
 2. Run `.\scripts\package-release.ps1 -RepositoryOwner <you> -RepositoryName <repo>`.
-3. Create a GitHub release using the same release tag and upload the ZIP from `release/`.
-4. Commit and push the updated `manifest.json`.
-5. In Jellyfin `Dashboard -> Plugins -> Repositories`, add:
+3. Commit and push the updated `manifest.json` and ZIP from `release/`.
+4. In Jellyfin `Dashboard -> Plugins -> Repositories`, add:
 
    `https://raw.githubusercontent.com/<you>/<repo>/main/manifest.json`
 
-6. Install **Jellyfin Recommendations** from the plugin catalog and restart Jellyfin.
+5. Install **Jellyfin Recommendations** from the plugin catalog and restart Jellyfin.
 
 ## Recommendation Strategy
 

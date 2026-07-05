@@ -1,7 +1,7 @@
 param(
-    [string]$Version = "0.1.0.11.4",
-    [string]$JellyfinVersion = "10.11.4",
-    [string]$TargetAbi = "10.11.4.0",
+    [string]$Version = "0.1.0.11.0",
+    [string]$JellyfinVersion = "10.11.0",
+    [string]$TargetAbi = "10.11.0.0",
     [string]$RepositoryOwner = "conncon99",
     [string]$RepositoryName = "JellyfinReccomendationsPlugin",
     [string]$ReleaseTag = "v0.1.0",
@@ -55,7 +55,7 @@ if (Test-Path $zipPath) {
 
 Compress-Archive -Path $dllPath, $metaPath -DestinationPath $zipPath -Force
 $checksum = (Get-FileHash -Path $zipPath -Algorithm MD5).Hash
-$sourceUrl = "https://github.com/$RepositoryOwner/$RepositoryName/releases/download/$ReleaseTag/$zipName"
+$sourceUrl = "https://raw.githubusercontent.com/$RepositoryOwner/$RepositoryName/main/release/$zipName"
 $repoUrl = "https://github.com/$RepositoryOwner/$RepositoryName"
 
 $manifestJson = Get-Content $manifestPath -Raw
@@ -79,5 +79,5 @@ Set-Content $manifestPath -Value $manifestOutput -NoNewline
 
 Write-Host "Created $zipPath"
 Write-Host "Checksum $checksum"
-Write-Host "Upload the ZIP to $sourceUrl"
+Write-Host "Commit and push the ZIP to release/$zipName"
 Write-Host "Jellyfin repository URL: https://raw.githubusercontent.com/$RepositoryOwner/$RepositoryName/main/manifest.json"
