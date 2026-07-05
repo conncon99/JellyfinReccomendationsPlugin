@@ -9,6 +9,17 @@
     "repositoryUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin",
     "versions":  [
                      {
+                         "version":  "0.1.22.0",
+                         "changelog":  "Return stable Trakt device auth response payloads",
+                         "targetAbi":  "10.11.0.0",
+                         "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.22.0.zip",
+                         "checksum":  "187DE981E27A6DA54CF0332AF2531A19",
+                         "timestamp":  "2026-07-05T19:23:30.868Z",
+                         "dependencies":  [
+
+                                          ]
+                     },
+                     {
                          "version":  "0.1.21.0",
                          "changelog":  "Handle Trakt device-code response casing",
                          "targetAbi":  "10.11.0.0",

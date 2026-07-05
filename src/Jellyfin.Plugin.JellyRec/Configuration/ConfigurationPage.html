@@ -190,6 +190,7 @@
       }
 
       function valueOf(object, camelName, snakeName, fallback) {
+        object = normalizeResponse(object);
         if (!object) {
           return fallback;
         }
@@ -208,6 +209,18 @@
         }
 
         return fallback;
+      }
+
+      function normalizeResponse(response) {
+        if (typeof response === "string") {
+          try {
+            return JSON.parse(response);
+          } catch (ignored) {
+            return {};
+          }
+        }
+
+        return response;
       }
 
       function errorMessage(error) {
@@ -243,6 +256,7 @@
           }),
           contentType: "application/json"
         }).then(function (result) {
+          result = normalizeResponse(result);
           if (result && result.status === "approved") {
             const config = readForm();
             config.TraktAccessToken = result.accessToken || "";
@@ -356,6 +370,7 @@
               contentType: "application/json"
             });
           }).then(function (result) {
+            result = normalizeResponse(result);
             if (result && result.status === "failed") {
               throw new Error(result.message || "authorization failed");
             }
