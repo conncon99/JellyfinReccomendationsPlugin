@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Jellyfin.Plugin.JellyRec.Configuration;
@@ -10,6 +11,7 @@ namespace Jellyfin.Plugin.JellyRec.Services;
 public sealed class TraktApiClient
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private const string UserAgent = "JellyRec/0.1 (+https://github.com/conncon99/JellyfinReccomendationsPlugin)";
     private readonly HttpClient _httpClient;
     private readonly ILogger<TraktApiClient> _logger;
 
@@ -202,6 +204,7 @@ public sealed class TraktApiClient
         request.Headers.TryAddWithoutValidation("trakt-api-version", "2");
         request.Headers.TryAddWithoutValidation("trakt-api-key", config.TraktClientId);
         request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {config.TraktAccessToken}");
+        AddCommonHeaders(request);
         return request;
     }
 
@@ -213,7 +216,14 @@ public sealed class TraktApiClient
         };
         request.Headers.TryAddWithoutValidation("trakt-api-version", "2");
         request.Headers.TryAddWithoutValidation("trakt-api-key", config.TraktClientId);
+        AddCommonHeaders(request);
         return request;
+    }
+
+    private static void AddCommonHeaders(HttpRequestMessage request)
+    {
+        request.Headers.TryAddWithoutValidation("User-Agent", UserAgent);
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
     }
 }
 
