@@ -9,12 +9,12 @@
     "repositoryUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin",
     "versions":  [
                      {
-                         "version":  "0.1.0.11.0",
+                         "version":  "0.1.11.0",
                          "changelog":  "Initial Trakt and Seerr recommendation test build",
                          "targetAbi":  "10.11.0.0",
-                         "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.0.11.0.zip",
-                         "checksum":  "082DA178845E2B6796DF5C3A9428F396",
-                         "timestamp":  "2026-07-05T18:15:18.541Z",
+                         "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.11.0.zip",
+                         "checksum":  "59AE81F3E6794EBE2F21C74AAF6666CE",
+                         "timestamp":  "2026-07-05T18:35:28.579Z",
                          "dependencies":  [
 
                                           ]
