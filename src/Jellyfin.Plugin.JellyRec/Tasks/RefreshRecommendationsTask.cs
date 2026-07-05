@@ -7,11 +7,16 @@ namespace Jellyfin.Plugin.JellyRec.Tasks;
 public sealed class RefreshRecommendationsTask : IScheduledTask
 {
     private readonly RecommendationService _recommendationService;
+    private readonly RecommendationHomeLibraryManager _homeLibraryManager;
     private readonly ILogger<RefreshRecommendationsTask> _logger;
 
-    public RefreshRecommendationsTask(RecommendationService recommendationService, ILogger<RefreshRecommendationsTask> logger)
+    public RefreshRecommendationsTask(
+        RecommendationService recommendationService,
+        RecommendationHomeLibraryManager homeLibraryManager,
+        ILogger<RefreshRecommendationsTask> logger)
     {
         _recommendationService = recommendationService;
+        _homeLibraryManager = homeLibraryManager;
         _logger = logger;
     }
 
@@ -27,6 +32,7 @@ public sealed class RefreshRecommendationsTask : IScheduledTask
     {
         progress.Report(5);
         var recommendations = await _recommendationService.RefreshAsync(cancellationToken).ConfigureAwait(false);
+        await _homeLibraryManager.EnsureHomeLibraryAsync(Plugin.Config, cancellationToken).ConfigureAwait(false);
         progress.Report(100);
         _logger.LogInformation("Scheduled JellyRec refresh wrote {Count} recommendations", recommendations.Count);
     }

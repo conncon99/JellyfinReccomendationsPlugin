@@ -9,6 +9,17 @@
     "repositoryUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin",
     "versions":  [
                      {
+                         "version":  "0.1.28.0",
+                         "changelog":  "Create recommendations library on Jellyfin home screen",
+                         "targetAbi":  "10.11.0.0",
+                         "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.28.0.zip",
+                         "checksum":  "E1D1B5C0DB41337DF2CB8FC478423351",
+                         "timestamp":  "2026-07-05T19:59:12.245Z",
+                         "dependencies":  [
+
+                                          ]
+                     },
+                     {
                          "version":  "0.1.27.0",
                          "changelog":  "Add visual recommendations carousel to plugin configuration",
                          "targetAbi":  "10.11.0.0",

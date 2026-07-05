@@ -10,17 +10,6 @@
           </label>
         </div>
 
-        <div class="verticalSection jellyRecRecommendationsSection">
-          <div class="sectionTitleContainer sectionTitleContainer-cards">
-            <h2 class="sectionTitle">Recommended</h2>
-            <button is="emby-button" type="button" id="ReloadRecommendationsButton" class="fab mini">
-              <span>Refresh View</span>
-            </button>
-          </div>
-          <div id="RecommendationsStatus" class="fieldDescription">Loading recommendations...</div>
-          <div id="RecommendationsRail" class="jellyRecRail" aria-live="polite"></div>
-        </div>
-
         <div class="inputContainer">
           <input is="emby-input" id="SeerrUrl" type="url" label="Seerr URL" />
         </div>
@@ -108,86 +97,6 @@
       </form>
     </div>
   </div>
-  <style>
-    .jellyRecRecommendationsSection {
-      margin: 1.5em 0;
-    }
-
-    .jellyRecRecommendationsSection .sectionTitleContainer {
-      align-items: center;
-      display: flex;
-      gap: 1em;
-      justify-content: space-between;
-      margin-bottom: .5em;
-    }
-
-    .jellyRecRail {
-      display: flex;
-      gap: 1em;
-      margin: .75em 0 1em;
-      min-height: 21em;
-      overflow-x: auto;
-      overflow-y: hidden;
-      padding: .25em .25em 1em;
-      scroll-snap-type: x proximity;
-      scrollbar-width: thin;
-    }
-
-    .jellyRecCard {
-      background: rgba(255, 255, 255, .04);
-      border: 1px solid rgba(255, 255, 255, .08);
-      border-radius: 8px;
-      flex: 0 0 11.5em;
-      overflow: hidden;
-      scroll-snap-align: start;
-    }
-
-    .jellyRecPoster {
-      align-items: center;
-      aspect-ratio: 2 / 3;
-      background: rgba(255, 255, 255, .08);
-      color: rgba(255, 255, 255, .7);
-      display: flex;
-      font-size: 3em;
-      justify-content: center;
-      width: 100%;
-    }
-
-    .jellyRecPoster img {
-      display: block;
-      height: 100%;
-      object-fit: cover;
-      width: 100%;
-    }
-
-    .jellyRecCardBody {
-      padding: .75em;
-    }
-
-    .jellyRecTitle {
-      font-weight: 600;
-      line-height: 1.25;
-      min-height: 2.5em;
-    }
-
-    .jellyRecMeta {
-      color: rgba(255, 255, 255, .65);
-      font-size: .9em;
-      margin-top: .35em;
-    }
-
-    .jellyRecOverview {
-      color: rgba(255, 255, 255, .72);
-      display: -webkit-box;
-      font-size: .88em;
-      line-height: 1.3;
-      margin-top: .65em;
-      min-height: 4.6em;
-      overflow: hidden;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 4;
-    }
-  </style>
   <script type="text/javascript">
     (function () {
       const pluginId = "1d1af7ee-7c42-42a0-9f03-d202274e68d5";
@@ -220,139 +129,6 @@
 
       function hideLoading() {
         Dashboard.hideLoadingMsg();
-      }
-
-      function setRecommendationsStatus(message) {
-        byId("RecommendationsStatus").textContent = message || "";
-      }
-
-      function posterUrl(item) {
-        const path = valueOf(item, "posterPath", "poster_path", "");
-        if (!path) {
-          return "";
-        }
-
-        if (/^https?:\/\//i.test(path)) {
-          return path;
-        }
-
-        return "https://image.tmdb.org/t/p/w342" + path;
-      }
-
-      function recommendationYear(item) {
-        const mediaType = valueOf(item, "mediaType", "media_type", "");
-        const date = mediaType === "tv"
-          ? valueOf(item, "firstAirDate", "first_air_date", "")
-          : valueOf(item, "releaseDate", "release_date", "");
-        if (!date || date.length < 4) {
-          return "";
-        }
-
-        return date.substring(0, 4);
-      }
-
-      function mediaLabel(mediaType) {
-        return mediaType === "tv" ? "TV" : "Movie";
-      }
-
-      function cardFallbackText(item) {
-        const rawTitle = valueOf(item, "title", "title", "");
-        const title = rawTitle ? rawTitle.trim() : "";
-        return title ? title.substring(0, 1).toUpperCase() : "?";
-      }
-
-      function renderRecommendations(items) {
-        const rail = byId("RecommendationsRail");
-        rail.innerHTML = "";
-        items = items || [];
-
-        if (!items.length) {
-          setRecommendationsStatus("No recommendations yet. Run Refresh Recommendations after connecting Seerr or Trakt.");
-          return;
-        }
-
-        setRecommendationsStatus(items.length + " recommendation" + (items.length === 1 ? "" : "s") + " ready.");
-        items.forEach(function (item) {
-          const titleText = valueOf(item, "title", "title", "Untitled");
-          const mediaType = valueOf(item, "mediaType", "media_type", "movie");
-          const sourceTitle = valueOf(item, "sourceTitle", "source_title", "");
-          const overviewText = valueOf(item, "overview", "overview", "");
-          const card = document.createElement("div");
-          card.className = "jellyRecCard";
-
-          const poster = document.createElement("div");
-          poster.className = "jellyRecPoster";
-          const imageUrl = posterUrl(item);
-          if (imageUrl) {
-            const img = document.createElement("img");
-            img.alt = titleText || "Recommendation poster";
-            img.loading = "lazy";
-            img.src = imageUrl;
-            img.onerror = function () {
-              poster.textContent = cardFallbackText(item);
-            };
-            poster.appendChild(img);
-          } else {
-            poster.textContent = cardFallbackText(item);
-          }
-
-          const body = document.createElement("div");
-          body.className = "jellyRecCardBody";
-
-          const title = document.createElement("div");
-          title.className = "jellyRecTitle";
-          title.textContent = titleText || "Untitled";
-          body.appendChild(title);
-
-          const metaParts = [mediaLabel(mediaType)];
-          const year = recommendationYear(item);
-          if (year) {
-            metaParts.push(year);
-          }
-
-          if (sourceTitle) {
-            metaParts.push("from " + sourceTitle);
-          }
-
-          const meta = document.createElement("div");
-          meta.className = "jellyRecMeta";
-          meta.textContent = metaParts.join(" - ");
-          body.appendChild(meta);
-
-          if (overviewText) {
-            const overview = document.createElement("div");
-            overview.className = "jellyRecOverview";
-            overview.textContent = overviewText;
-            body.appendChild(overview);
-          }
-
-          card.appendChild(poster);
-          card.appendChild(body);
-          rail.appendChild(card);
-        });
-      }
-
-      function responseRecommendations(response) {
-        response = normalizeResponse(response);
-        if (!response) {
-          return [];
-        }
-
-        return response.recommendations || response.Recommendations || [];
-      }
-
-      function loadRecommendations() {
-        setRecommendationsStatus("Loading recommendations...");
-        return ApiClient.ajax({
-          type: "GET",
-          url: ApiClient.getUrl("JellyRec/Recommendations"),
-          dataType: "json"
-        }).then(function (result) {
-          renderRecommendations(responseRecommendations(result));
-        }).catch(function () {
-          byId("RecommendationsRail").innerHTML = "";
-          setRecommendationsStatus("Could not load recommendations. Check Jellyfin logs.");
-        });
       }
 
       function readForm() {
@@ -533,7 +309,6 @@
         Dashboard.showLoadingMsg();
         ApiClient.getPluginConfiguration(pluginId)
           .then(writeForm)
-          .then(loadRecommendations)
           .catch(function () {
             Dashboard.alert("Could not load JellyRec settings.");
           })
@@ -656,16 +431,10 @@
             dataType: "json"
           }).then(function (result) {
             result = normalizeResponse(result);
-            renderRecommendations(responseRecommendations(result));
-            Dashboard.alert("Recommendation refresh completed. " + (result.count || 0) + " items are ready to view.");
+            Dashboard.alert("Recommendation refresh completed. " + (result.count || 0) + " items are ready on the Jellyfin home screen.");
           }).catch(function () {
             Dashboard.alert("Recommendation refresh failed. Check Jellyfin logs.");
           }).finally(hideLoading);
-        });
-
-        byId("ReloadRecommendationsButton").addEventListener("click", function () {
-          Dashboard.showLoadingMsg();
-          loadRecommendations().finally(hideLoading);
         });
 
         byId("EnsureFolderButton").addEventListener("click", function () {

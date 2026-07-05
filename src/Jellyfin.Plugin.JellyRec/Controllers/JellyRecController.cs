@@ -16,6 +16,7 @@ public sealed class JellyRecController : ControllerBase
     private readonly RecommendationService _recommendationService;
     private readonly RecommendationLibraryWriter _writer;
     private readonly RecommendationFolderManager _folderManager;
+    private readonly RecommendationHomeLibraryManager _homeLibraryManager;
     private readonly ILogger<JellyRecController> _logger;
 
     public JellyRecController(
@@ -24,6 +25,7 @@ public sealed class JellyRecController : ControllerBase
         RecommendationService recommendationService,
         RecommendationLibraryWriter writer,
         RecommendationFolderManager folderManager,
+        RecommendationHomeLibraryManager homeLibraryManager,
         ILogger<JellyRecController> logger)
     {
         _seerrApiClient = seerrApiClient;
@@ -31,6 +33,7 @@ public sealed class JellyRecController : ControllerBase
         _recommendationService = recommendationService;
         _writer = writer;
         _folderManager = folderManager;
+        _homeLibraryManager = homeLibraryManager;
         _logger = logger;
     }
 
@@ -110,7 +113,8 @@ public sealed class JellyRecController : ControllerBase
     [HttpPost("EnsureRecommendationFolder")]
     public async Task<ActionResult> EnsureRecommendationFolder([FromBody] PluginConfiguration config, CancellationToken cancellationToken)
     {
-        var path = await _folderManager.EnsureRecommendationPathAsync(config, cancellationToken).ConfigureAwait(false);
+        await _homeLibraryManager.EnsureHomeLibraryAsync(config, cancellationToken).ConfigureAwait(false);
+        var path = _folderManager.ResolveRecommendationPath(config);
         return Ok(new { path });
     }
 
@@ -118,6 +122,7 @@ public sealed class JellyRecController : ControllerBase
     public async Task<ActionResult> Refresh(CancellationToken cancellationToken)
     {
         var recommendations = await _recommendationService.RefreshAsync(cancellationToken).ConfigureAwait(false);
+        await _homeLibraryManager.EnsureHomeLibraryAsync(Plugin.Config, cancellationToken).ConfigureAwait(false);
         _logger.LogInformation("Manual JellyRec refresh wrote {Count} recommendations", recommendations.Count);
         return Ok(new { count = recommendations.Count, recommendations });
     }
