@@ -9,6 +9,17 @@
     "repositoryUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin",
     "versions":  [
                      {
+                         "version":  "0.1.31.0",
+                         "changelog":  "Fix recommendation cards and Not Interested actions, improve Trakt history matching and resync reporting, and add configurable recommendation expiry with cooldown.",
+                         "targetAbi":  "10.11.0.0",
+                         "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.31.0.zip",
+                         "checksum":  "CEC67C67E10DDA32CFCC378487FDC9F7",
+                         "timestamp":  "2026-07-11T11:43:29.438Z",
+                         "dependencies":  [
+
+                                          ]
+                     },
+                     {
                          "version":  "0.1.30.0",
                          "changelog":  "Add opt-in Jellyfin-to-Trakt watch history sync, diversity-aware candidate ranking, and persistent Not Interested feedback.",
                          "targetAbi":  "10.11.0.0",

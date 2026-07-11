@@ -24,6 +24,8 @@ public sealed class RecommendationItem
 
     public string? SourceTitle { get; set; }
 
+    public DateTime? FirstRecommendedAtUtc { get; set; }
+
     [JsonIgnore]
     public int? Year
     {
@@ -34,4 +36,3 @@ public sealed class RecommendationItem
         }
     }
 }
-

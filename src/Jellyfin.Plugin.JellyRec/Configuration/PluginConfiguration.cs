@@ -53,4 +53,8 @@ public sealed class PluginConfiguration : BasePluginConfiguration
     public double DiversityStrength { get; set; } = 1.0;
 
     public string DismissedItems { get; set; } = string.Empty;
+
+    public int RecommendationRetentionDays { get; set; } = 7;
+
+    public string ExpiredRecommendationCooldowns { get; set; } = string.Empty;
 }

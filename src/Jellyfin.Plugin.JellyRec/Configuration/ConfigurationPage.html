@@ -47,6 +47,7 @@
             <span>Sync played Jellyfin movies and episodes to Trakt</span>
           </label>
           <div class="fieldDescription">Opt-in. The first refresh sends all known played movies and episodes; later refreshes send newly played items.</div>
+          <div id="TraktHistorySyncStatus" class="fieldDescription"></div>
           <label class="checkboxContainer">
             <input is="emby-checkbox" type="checkbox" id="EnableSeerrRecommendations" />
             <span>Use Seerr/TMDb similar-title fallback</span>
@@ -76,6 +77,10 @@
             <input is="emby-input" id="DiversityStrength" type="number" min="0" max="5" step="0.1" label="Candidate Variety Strength" />
             <div class="fieldDescription">Penalizes repeated source titles, media types, and release decades. Set to 0 to disable.</div>
           </div>
+          <div class="inputContainer">
+            <input is="emby-input" id="RecommendationRetentionDays" type="number" min="1" max="90" label="Recommendation Lifetime (days)" />
+            <div class="fieldDescription">Expired recommendations are removed automatically and cooled down for the same period before they can return.</div>
+          </div>
           <label class="checkboxContainer">
             <input is="emby-checkbox" type="checkbox" id="RequestOnlyFirstSeason" />
             <span>Request only season 1 for TV shows</span>
@@ -98,6 +103,9 @@
           </button>
           <button is="emby-button" type="button" id="RefreshButton" class="raised block">
             <span>Refresh Recommendations</span>
+          </button>
+          <button is="emby-button" type="button" id="ResyncHistoryButton" class="raised block">
+            <span>Resync All Watch History</span>
           </button>
           <button is="emby-button" type="button" id="EnsureFolderButton" class="raised block">
             <span>Create Recommendation Folder</span>
@@ -142,7 +150,9 @@
         RemoveAfterRequest: true,
         MinRating: 6.0,
         DiversityStrength: 1.0,
-        DismissedItems: ""
+        DismissedItems: "",
+        RecommendationRetentionDays: 7,
+        ExpiredRecommendationCooldowns: ""
       };
 
       function byId(id) {
@@ -179,7 +189,9 @@
           RemoveAfterRequest: byId("RemoveAfterRequest").checked,
           MinRating: Number(byId("MinRating").value || defaults.MinRating),
           DiversityStrength: Number(byId("DiversityStrength").value || defaults.DiversityStrength),
-          DismissedItems: defaults.DismissedItems
+          DismissedItems: defaults.DismissedItems,
+          RecommendationRetentionDays: Number(byId("RecommendationRetentionDays").value || defaults.RecommendationRetentionDays),
+          ExpiredRecommendationCooldowns: defaults.ExpiredRecommendationCooldowns
         };
       }
 
@@ -193,6 +205,12 @@
         byId("EnableTraktRecommendations").checked = config.EnableTraktRecommendations !== false;
         byId("SyncJellyfinHistoryToTrakt").checked = !!config.SyncJellyfinHistoryToTrakt;
         defaults.TraktHistoryLastSyncedAtUtc = config.TraktHistoryLastSyncedAtUtc || null;
+        if (config.TraktHistoryLastSyncedAtUtc) {
+          const syncedAt = new Date(config.TraktHistoryLastSyncedAtUtc);
+          byId("TraktHistorySyncStatus").textContent = "Last successful history sync: " + syncedAt.toLocaleString();
+        } else {
+          byId("TraktHistorySyncStatus").textContent = "Watch history has not been synced yet.";
+        }
         byId("TraktClientId").value = config.TraktClientId || "";
         byId("TraktClientSecret").value = config.TraktClientSecret || "";
         byId("TraktAccessToken").value = config.TraktAccessToken || "";
@@ -210,6 +228,8 @@
         byId("MinRating").value = config.MinRating !== undefined ? config.MinRating : defaults.MinRating;
         byId("DiversityStrength").value = config.DiversityStrength !== undefined ? config.DiversityStrength : defaults.DiversityStrength;
         defaults.DismissedItems = config.DismissedItems || "";
+        byId("RecommendationRetentionDays").value = config.RecommendationRetentionDays || defaults.RecommendationRetentionDays;
+        defaults.ExpiredRecommendationCooldowns = config.ExpiredRecommendationCooldowns || "";
       }
 
       function loadRecommendations() {
@@ -221,13 +241,18 @@
           response = normalizeResponse(response);
           const list = byId("RecommendationList");
           list.replaceChildren();
-          (response.recommendations || []).forEach(function (item) {
+          const recommendations = valueOf(response, "recommendations", "recommendations", []);
+          recommendations.forEach(function (item) {
+            const titleValue = valueOf(item, "title", "title", "Untitled");
+            const posterPathValue = valueOf(item, "posterPath", "poster_path", "");
+            const tmdbIdValue = valueOf(item, "tmdbId", "tmdb_id", 0);
+            const mediaTypeValue = valueOf(item, "mediaType", "media_type", "");
             const card = document.createElement("div");
             card.style.cssText = "padding:.75em;background:rgba(128,128,128,.12);border-radius:.4em;display:flex;flex-direction:column;gap:.5em;";
 
-            if (item.posterPath) {
+            if (posterPathValue) {
               const image = document.createElement("img");
-              image.src = "https://image.tmdb.org/t/p/w342" + item.posterPath;
+              image.src = "https://image.tmdb.org/t/p/w342" + posterPathValue;
               image.alt = "";
               image.loading = "lazy";
               image.style.cssText = "width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:.25em;";
@@ -235,7 +260,7 @@
             }
 
             const title = document.createElement("strong");
-            title.textContent = item.title || "Untitled";
+            title.textContent = titleValue;
             card.appendChild(title);
 
             const button = document.createElement("button");
@@ -248,7 +273,7 @@
               ApiClient.ajax({
                 type: "POST",
                 url: ApiClient.getUrl("JellyRec/NotInterested"),
-                data: JSON.stringify({ tmdbId: item.tmdbId, mediaType: item.mediaType }),
+                data: JSON.stringify({ tmdbId: tmdbIdValue, mediaType: mediaTypeValue }),
                 contentType: "application/json"
               }).then(function () {
                 card.remove();
@@ -515,9 +540,35 @@
           }).then(function (result) {
             result = normalizeResponse(result);
             Dashboard.alert("Recommendation refresh completed. " + (result.count || 0) + " items are ready on the Jellyfin home screen.");
-            return loadRecommendations();
+            return Promise.all([
+              loadRecommendations(),
+              ApiClient.getPluginConfiguration(pluginId).then(writeForm)
+            ]);
           }).catch(function () {
             Dashboard.alert("Recommendation refresh failed. Check Jellyfin logs.");
+          }).finally(hideLoading);
+        });
+
+        byId("ResyncHistoryButton").addEventListener("click", function () {
+          Dashboard.showLoadingMsg();
+          ApiClient.ajax({
+            type: "POST",
+            url: ApiClient.getUrl("JellyRec/Trakt/ResyncHistory"),
+            dataType: "json"
+          }).then(function (result) {
+            result = normalizeResponse(result);
+            const discovered = valueOf(result, "discovered", "discovered", 0);
+            const submitted = valueOf(result, "submitted", "submitted", 0);
+            const accepted = valueOf(result, "accepted", "accepted", 0);
+            const skipped = valueOf(result, "skipped", "skipped", 0);
+            Dashboard.alert(
+              "Watch-history resync complete. Discovered: " + discovered +
+              ", submitted: " + submitted +
+              ", accepted by Trakt: " + accepted +
+              ", skipped: " + skipped + ".");
+            return ApiClient.getPluginConfiguration(pluginId).then(writeForm);
+          }).catch(function (error) {
+            Dashboard.alert("Watch-history resync failed: " + errorMessage(error));
           }).finally(hideLoading);
         });
 

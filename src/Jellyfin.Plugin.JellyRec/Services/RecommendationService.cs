@@ -55,12 +55,21 @@ public sealed class RecommendationService
             return Array.Empty<RecommendationItem>();
         }
 
+        var firstSeen = ApplyRecommendationLifecycle(config);
+
         // Single-pass gather of watched seeds and existing TMDb IDs in the library
-        var (seeds, existing, history) = GetWatchedSeedsAndExistingItems(config.RecentlyWatchedLimit);
+        var (seeds, existing, history, discovered, skipped) = GetWatchedSeedsAndExistingItems(config.RecentlyWatchedLimit);
 
         if (config.SyncJellyfinHistoryToTrakt && HasTraktCredentials(config))
         {
-            await SyncTraktHistoryAsync(config, history, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await SyncTraktHistoryAsync(config, history, discovered, skipped, false, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to sync Jellyfin watch history to Trakt; the sync checkpoint was not advanced.");
+            }
         }
 
         // Fetch already-requested items from Seerr to filter them out of recommendations
@@ -179,10 +188,12 @@ public sealed class RecommendationService
 
         // Process, filter, and rank the candidates
         var dismissed = ParseDismissedItems(config.DismissedItems);
+        var coolingDown = ParseCooldowns(config.ExpiredRecommendationCooldowns, DateTime.UtcNow).Keys.ToHashSet();
         var scored = candidates
             .Where(item => item.TmdbId > 0 &&
                            !existing.Contains((item.MediaType, item.TmdbId)) &&
                            !dismissed.Contains((item.MediaType, item.TmdbId)) &&
+                           !coolingDown.Contains((item.MediaType, item.TmdbId)) &&
                            (item.Rating >= config.MinRating || item.Rating == 0.0)) // Filter out low-rated items (allow 0.0 for unrated/missing info)
             .GroupBy(item => (item.MediaType, item.TmdbId))
             .Select(group =>
@@ -195,6 +206,9 @@ public sealed class RecommendationService
                 {
                     best.Score += best.Rating * 0.1;
                 }
+                best.FirstRecommendedAtUtc = firstSeen.TryGetValue((best.MediaType, best.TmdbId), out var seenAt)
+                    ? seenAt
+                    : DateTime.UtcNow;
                 return best;
             })
             .OrderByDescending(item => item.Score)
@@ -205,6 +219,66 @@ public sealed class RecommendationService
 
         await _writer.WriteAsync(config, ranked, cancellationToken).ConfigureAwait(false);
         return ranked;
+    }
+
+    private Dictionary<(string MediaType, int TmdbId), DateTime> ApplyRecommendationLifecycle(PluginConfiguration config)
+    {
+        var now = DateTime.UtcNow;
+        var retention = TimeSpan.FromDays(Math.Max(1, config.RecommendationRetentionDays));
+        var current = _writer.ReadAll(config);
+        var firstSeen = new Dictionary<(string MediaType, int TmdbId), DateTime>();
+        var cooldowns = ParseCooldowns(config.ExpiredRecommendationCooldowns, now);
+        var changed = cooldowns.Count != ParseCooldowns(config.ExpiredRecommendationCooldowns, DateTime.MinValue).Count;
+
+        foreach (var item in current)
+        {
+            var key = (item.MediaType, item.TmdbId);
+            var seenAt = item.FirstRecommendedAtUtc?.ToUniversalTime() ?? now;
+            if (now - seenAt >= retention)
+            {
+                _writer.Remove(config, item);
+                cooldowns[key] = now.Add(retention);
+                changed = true;
+                _logger.LogInformation("Expired recommendation '{Title}' after {Days} days.", item.Title, Math.Max(1, config.RecommendationRetentionDays));
+            }
+            else
+            {
+                firstSeen[key] = seenAt;
+            }
+        }
+
+        if (changed)
+        {
+            config.ExpiredRecommendationCooldowns = SerializeCooldowns(cooldowns);
+            Plugin.Instance.UpdateConfiguration(config);
+        }
+
+        return firstSeen;
+    }
+
+    private static Dictionary<(string MediaType, int TmdbId), DateTime> ParseCooldowns(string value, DateTime now)
+    {
+        var cooldowns = new Dictionary<(string MediaType, int TmdbId), DateTime>();
+        foreach (var entry in value.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = entry.Split('|', 2);
+            var keyParts = parts[0].Split(':', 2);
+            if (parts.Length == 2 && keyParts.Length == 2 && int.TryParse(keyParts[1], out var tmdbId) &&
+                DateTime.TryParse(parts[1], null, System.Globalization.DateTimeStyles.RoundtripKind, out var until) && until.ToUniversalTime() > now)
+            {
+                cooldowns[(NormalizeMediaType(keyParts[0], keyParts[0]), tmdbId)] = until.ToUniversalTime();
+            }
+        }
+
+        return cooldowns;
+    }
+
+    private static string SerializeCooldowns(Dictionary<(string MediaType, int TmdbId), DateTime> cooldowns)
+    {
+        return string.Join(';', cooldowns
+            .OrderBy(entry => entry.Key.MediaType)
+            .ThenBy(entry => entry.Key.TmdbId)
+            .Select(entry => $"{entry.Key.MediaType}:{entry.Key.TmdbId}|{entry.Value.ToUniversalTime():O}"));
     }
 
     private static List<RecommendationItem> Diversify(
@@ -254,36 +328,63 @@ public sealed class RecommendationService
         return dismissed;
     }
 
-    private async Task SyncTraktHistoryAsync(
+    public async Task<TraktHistorySyncResult> SyncAllTraktHistoryAsync(CancellationToken cancellationToken)
+    {
+        var config = Plugin.Config;
+        if (!HasTraktCredentials(config))
+        {
+            throw new InvalidOperationException("Connect Trakt before syncing watch history.");
+        }
+
+        var (_, _, history, discovered, skipped) = GetWatchedSeedsAndExistingItems(config.RecentlyWatchedLimit);
+        return await SyncTraktHistoryAsync(config, history, discovered, skipped, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<TraktHistorySyncResult> SyncTraktHistoryAsync(
         PluginConfiguration config,
         IReadOnlyCollection<TraktHistoryItem> history,
+        int discovered,
+        int skipped,
+        bool fullSync,
         CancellationToken cancellationToken)
     {
         var pending = history
-            .Where(item => !config.TraktHistoryLastSyncedAtUtc.HasValue ||
+            .Where(item => fullSync || !config.TraktHistoryLastSyncedAtUtc.HasValue ||
                 item.WatchedAtUtc > config.TraktHistoryLastSyncedAtUtc.Value.ToUniversalTime())
             .OrderBy(item => item.WatchedAtUtc)
             .ToList();
 
         if (pending.Count == 0)
         {
-            return;
+            return new TraktHistorySyncResult
+            {
+                Discovered = discovered,
+                Skipped = skipped,
+                CheckpointUtc = config.TraktHistoryLastSyncedAtUtc
+            };
         }
 
-        try
+        var accepted = await _traktApiClient.AddToHistoryAsync(config, pending, cancellationToken).ConfigureAwait(false);
+        config.TraktHistoryLastSyncedAtUtc = pending[^1].WatchedAtUtc;
+        Plugin.Instance.UpdateConfiguration(config);
+        var result = new TraktHistorySyncResult
         {
-            var count = await _traktApiClient.AddToHistoryAsync(config, pending, cancellationToken).ConfigureAwait(false);
-            config.TraktHistoryLastSyncedAtUtc = pending[^1].WatchedAtUtc;
-            Plugin.Instance.UpdateConfiguration(config);
-            _logger.LogInformation("Synced {Count} Jellyfin history items to Trakt.", count);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to sync Jellyfin watch history to Trakt; the sync checkpoint was not advanced.");
-        }
+            Discovered = discovered,
+            Submitted = pending.Count,
+            Accepted = accepted,
+            Skipped = skipped,
+            CheckpointUtc = config.TraktHistoryLastSyncedAtUtc
+        };
+        _logger.LogInformation(
+            "Trakt history sync discovered {Discovered}, submitted {Submitted}, accepted {Accepted}, and skipped {Skipped} items.",
+            result.Discovered,
+            result.Submitted,
+            result.Accepted,
+            result.Skipped);
+        return result;
     }
 
-    private (List<WatchedSeed> Seeds, HashSet<(string MediaType, int TmdbId)> Existing, List<TraktHistoryItem> History) GetWatchedSeedsAndExistingItems(int limit)
+    private (List<WatchedSeed> Seeds, HashSet<(string MediaType, int TmdbId)> Existing, List<TraktHistoryItem> History, int Discovered, int Skipped) GetWatchedSeedsAndExistingItems(int limit)
     {
         var config = Plugin.Config;
         var recFolder = _folderManager.ResolveRecommendationPath(config);
@@ -294,6 +395,8 @@ public sealed class RecommendationService
         var seeds = new List<WatchedSeed>();
         var existing = new HashSet<(string MediaType, int TmdbId)>();
         var history = new List<TraktHistoryItem>();
+        var discovered = 0;
+        var skipped = 0;
 
         var items = _libraryManager.GetItemList(new InternalItemsQuery
         {
@@ -309,12 +412,6 @@ public sealed class RecommendationService
                 continue;
             }
 
-            var tmdb = GetTmdbId(item);
-            if (!tmdb.HasValue)
-            {
-                continue;
-            }
-
             if (item is Episode episode)
             {
                 if (sourcePaths.Length > 0 && !sourcePaths.Any(path => IsInPath(episode.Path, path)))
@@ -323,20 +420,48 @@ public sealed class RecommendationService
                 }
 
                 var episodeData = GetMostRecentUserData(episode);
-                if (episodeData is not null &&
-                    (episodeData.Played || episodeData.PlayCount > 0) &&
-                    episodeData.LastPlayedDate.HasValue &&
-                    episode.ParentIndexNumber.HasValue &&
-                    episode.IndexNumber.HasValue)
+                if (episodeData is null || (!episodeData.Played && episodeData.PlayCount <= 0) || !episodeData.LastPlayedDate.HasValue)
                 {
-                    history.Add(new TraktHistoryItem
+                    continue;
+                }
+
+                discovered++;
+                var episodeTmdb = GetProviderId(episode, "Tmdb");
+                var episodeTvdb = GetProviderId(episode, "Tvdb");
+                var series = _libraryManager.GetItemById(episode.SeriesId) as Series;
+                var seriesTmdb = series is null ? null : GetProviderId(series, "Tmdb");
+                if ((!episodeTmdb.HasValue && !episodeTvdb.HasValue && !seriesTmdb.HasValue) ||
+                    !episode.ParentIndexNumber.HasValue || !episode.IndexNumber.HasValue)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                history.Add(new TraktHistoryItem
+                {
+                    TmdbId = episodeTmdb,
+                    TvdbId = episodeTvdb,
+                    SeriesTmdbId = seriesTmdb,
+                    MediaType = "episode",
+                    WatchedAtUtc = episodeData.LastPlayedDate.Value.ToUniversalTime(),
+                    SeasonNumber = episode.ParentIndexNumber.Value,
+                    EpisodeNumber = episode.IndexNumber.Value
+                });
+
+                continue;
+            }
+
+            var tmdb = GetTmdbId(item);
+            if (!tmdb.HasValue)
+            {
+                if (item is Movie)
+                {
+                    var movieData = GetMostRecentUserData(item);
+                    if (movieData is not null && (movieData.Played || movieData.PlayCount > 0) && movieData.LastPlayedDate.HasValue)
                     {
-                        TmdbId = tmdb.Value,
-                        MediaType = "episode",
-                        WatchedAtUtc = episodeData.LastPlayedDate.Value.ToUniversalTime(),
-                        SeasonNumber = episode.ParentIndexNumber.Value,
-                        EpisodeNumber = episode.IndexNumber.Value
-                    });
+                        discovered++;
+                        skipped++;
+                    }
                 }
 
                 continue;
@@ -361,6 +486,7 @@ public sealed class RecommendationService
 
             if (item is Movie && (bestData.Played || bestData.PlayCount > 0) && bestData.LastPlayedDate.HasValue)
             {
+                discovered++;
                 history.Add(new TraktHistoryItem
                 {
                     TmdbId = tmdb.Value,
@@ -395,7 +521,7 @@ public sealed class RecommendationService
             .Take(Math.Max(1, limit))
             .ToList();
 
-        return (sortedSeeds, existing, history);
+        return (sortedSeeds, existing, history, discovered, skipped);
     }
 
     private UserItemData? GetMostRecentUserData(BaseItem item)
@@ -427,7 +553,12 @@ public sealed class RecommendationService
 
     private static int? GetTmdbId(BaseItem item)
     {
-        return item.ProviderIds.TryGetValue("Tmdb", out var value) && int.TryParse(value, out var id) ? id : null;
+        return GetProviderId(item, "Tmdb");
+    }
+
+    private static int? GetProviderId(BaseItem item, string provider)
+    {
+        return item.ProviderIds.TryGetValue(provider, out var value) && int.TryParse(value, out var id) ? id : null;
     }
 
     private static string NormalizeMediaType(string? mediaType, string fallback)

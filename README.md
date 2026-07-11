@@ -46,6 +46,10 @@ The current ranker:
 - diversifies the final shelf across source titles, movies/shows, and release decades;
 - permanently excludes titles marked **Not interested** on the plugin configuration page.
 
+Watch-history sync runs with each scheduled or manual recommendation refresh. The configuration page also provides **Resync All Watch History**, which safely submits the complete eligible history again and reports discovered, submitted, accepted, and skipped counts. Episodes can be matched using their TMDb/TVDB IDs or their parent series TMDb ID plus season and episode number.
+
+Recommendations retain their original first-seen time across refreshes. By default they expire after seven days, are removed from the recommendation folder, and enter a seven-day cooldown before they may be recommended again. The lifetime is configurable under Advanced settings.
+
 Future OAuth/device-code setup should replace manual Trakt access-token entry.
 
 ## Project Status

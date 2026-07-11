@@ -127,6 +127,21 @@ public sealed class JellyRecController : ControllerBase
         return Ok(new { count = recommendations.Count, recommendations });
     }
 
+    [HttpPost("Trakt/ResyncHistory")]
+    public async Task<ActionResult> ResyncTraktHistory(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _recommendationService.SyncAllTraktHistoryAsync(cancellationToken).ConfigureAwait(false);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Manual Trakt history resync failed");
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpGet("Recommendations")]
     public ActionResult GetRecommendations()
     {

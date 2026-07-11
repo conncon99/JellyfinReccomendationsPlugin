@@ -55,7 +55,11 @@ public sealed class TraktIds
 
 public sealed class TraktHistoryItem
 {
-    public int TmdbId { get; init; }
+    public int? TmdbId { get; init; }
+
+    public int? TvdbId { get; init; }
+
+    public int? SeriesTmdbId { get; init; }
 
     public string MediaType { get; init; } = string.Empty;
 
@@ -64,4 +68,17 @@ public sealed class TraktHistoryItem
     public int? SeasonNumber { get; init; }
 
     public int? EpisodeNumber { get; init; }
+}
+
+public sealed class TraktHistorySyncResult
+{
+    public int Discovered { get; init; }
+
+    public int Submitted { get; init; }
+
+    public int Accepted { get; init; }
+
+    public int Skipped { get; init; }
+
+    public DateTime? CheckpointUtc { get; init; }
 }

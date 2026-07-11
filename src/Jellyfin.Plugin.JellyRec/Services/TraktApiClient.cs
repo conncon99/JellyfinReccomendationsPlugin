@@ -144,6 +144,8 @@ public sealed class TraktApiClient
         var synced = 0;
         foreach (var batch in items.Chunk(100))
         {
+            var directEpisodes = batch.Where(item => item.MediaType == "episode" && (item.TmdbId.HasValue || item.TvdbId.HasValue));
+            var seriesEpisodes = batch.Where(item => item.MediaType == "episode" && !item.TmdbId.HasValue && !item.TvdbId.HasValue && item.SeriesTmdbId.HasValue);
             var body = new
             {
                 movies = batch
@@ -151,16 +153,26 @@ public sealed class TraktApiClient
                     .Select(item => new
                     {
                         watched_at = item.WatchedAtUtc,
-                        ids = new { tmdb = item.TmdbId }
+                        ids = BuildHistoryIds(item)
                     }),
-                episodes = batch
-                    .Where(item => item.MediaType == "episode")
+                episodes = directEpisodes
                     .Select(item => new
                     {
                         watched_at = item.WatchedAtUtc,
                         season = item.SeasonNumber,
                         number = item.EpisodeNumber,
-                        ids = new { tmdb = item.TmdbId }
+                        ids = BuildHistoryIds(item)
+                    }),
+                shows = seriesEpisodes
+                    .GroupBy(item => item.SeriesTmdbId!.Value)
+                    .Select(show => new
+                    {
+                        ids = new { tmdb = show.Key },
+                        seasons = show.GroupBy(item => item.SeasonNumber!.Value).Select(season => new
+                        {
+                            number = season.Key,
+                            episodes = season.Select(item => new { number = item.EpisodeNumber, watched_at = item.WatchedAtUtc })
+                        })
                     })
             };
 
@@ -173,10 +185,36 @@ public sealed class TraktApiClient
                 throw new InvalidOperationException($"Trakt history sync failed ({(int)response.StatusCode} {response.StatusCode}): {content}");
             }
 
-            synced += batch.Length;
+            var responseJson = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            using var document = JsonDocument.Parse(responseJson);
+            if (document.RootElement.TryGetProperty("added", out var added))
+            {
+                synced += GetCount(added, "movies") + GetCount(added, "episodes");
+            }
         }
 
         return synced;
+    }
+
+    private static int GetCount(JsonElement element, string propertyName)
+    {
+        return element.TryGetProperty(propertyName, out var value) && value.TryGetInt32(out var count) ? count : 0;
+    }
+
+    private static Dictionary<string, int> BuildHistoryIds(TraktHistoryItem item)
+    {
+        var ids = new Dictionary<string, int>();
+        if (item.TmdbId.HasValue)
+        {
+            ids["tmdb"] = item.TmdbId.Value;
+        }
+
+        if (item.TvdbId.HasValue)
+        {
+            ids["tvdb"] = item.TvdbId.Value;
+        }
+
+        return ids;
     }
 
     private async Task<List<RecommendationItem>> GetRecommendationBucketAsync(PluginConfiguration config, string bucket, int limit, CancellationToken cancellationToken)
