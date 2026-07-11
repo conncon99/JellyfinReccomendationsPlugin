@@ -8,6 +8,15 @@
             <input is="emby-checkbox" type="checkbox" id="Enabled" />
             <span>Enable recommendation refresh and request handling</span>
           </label>
+          <div style="margin-top:1em;padding:1em;border-radius:.5em;background:rgba(0,164,220,.12);line-height:1.5;">
+            <strong>Use recommendations from any client</strong>
+            <div class="fieldDescription" style="margin-top:.35em;">
+              JellyRec creates separate <b>Recommended Movies</b> and <b>Recommended Series</b> shelves.
+              Open a card or its action menu: <b>Rate</b> marks it watched and teaches JellyRec,
+              <b>Dislike</b> means Not Interested, and <b>Favorite</b> requests it in Seerr.
+              On Android TV and Fire TV, long-press the select button to open card actions.
+            </div>
+          </div>
         </div>
 
         <div class="inputContainer">
@@ -117,7 +126,7 @@
       </form>
       <div class="verticalSection">
         <h2>Current Recommendations</h2>
-        <div class="fieldDescription">Dismiss a title to remove it now and prevent it from returning in future refreshes.</div>
+        <div class="fieldDescription">These controls are also available through native Jellyfin actions on the home shelves. This grid is retained for administration.</div>
         <div id="RecommendationList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1em;margin-top:1em;"></div>
       </div>
     </div>
@@ -151,6 +160,7 @@
         MinRating: 6.0,
         DiversityStrength: 1.0,
         DismissedItems: "",
+        ManuallyWatchedItems: "",
         RecommendationRetentionDays: 7,
         ExpiredRecommendationCooldowns: ""
       };
@@ -190,6 +200,7 @@
           MinRating: Number(byId("MinRating").value || defaults.MinRating),
           DiversityStrength: Number(byId("DiversityStrength").value || defaults.DiversityStrength),
           DismissedItems: defaults.DismissedItems,
+          ManuallyWatchedItems: defaults.ManuallyWatchedItems,
           RecommendationRetentionDays: Number(byId("RecommendationRetentionDays").value || defaults.RecommendationRetentionDays),
           ExpiredRecommendationCooldowns: defaults.ExpiredRecommendationCooldowns
         };
@@ -228,6 +239,7 @@
         byId("MinRating").value = config.MinRating !== undefined ? config.MinRating : defaults.MinRating;
         byId("DiversityStrength").value = config.DiversityStrength !== undefined ? config.DiversityStrength : defaults.DiversityStrength;
         defaults.DismissedItems = config.DismissedItems || "";
+        defaults.ManuallyWatchedItems = config.ManuallyWatchedItems || "";
         byId("RecommendationRetentionDays").value = config.RecommendationRetentionDays || defaults.RecommendationRetentionDays;
         defaults.ExpiredRecommendationCooldowns = config.ExpiredRecommendationCooldowns || "";
       }
@@ -250,13 +262,27 @@
             const card = document.createElement("div");
             card.style.cssText = "padding:.75em;background:rgba(128,128,128,.12);border-radius:.4em;display:flex;flex-direction:column;gap:.5em;";
 
+            function addArtworkPlaceholder() {
+              const placeholder = document.createElement("div");
+              placeholder.setAttribute("aria-label", "Artwork unavailable");
+              placeholder.textContent = "🎬";
+              placeholder.style.cssText = "width:100%;aspect-ratio:2/3;border-radius:.25em;background:rgba(128,128,128,.18);display:flex;align-items:center;justify-content:center;font-size:3em;";
+              card.prepend(placeholder);
+            }
+
             if (posterPathValue) {
               const image = document.createElement("img");
               image.src = "https://image.tmdb.org/t/p/w342" + posterPathValue;
               image.alt = "";
               image.loading = "lazy";
               image.style.cssText = "width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:.25em;";
+              image.addEventListener("error", function () {
+                image.remove();
+                addArtworkPlaceholder();
+              }, { once: true });
               card.appendChild(image);
+            } else {
+              addArtworkPlaceholder();
             }
 
             const title = document.createElement("strong");
@@ -283,6 +309,41 @@
               });
             });
             card.appendChild(button);
+
+            const watchedRow = document.createElement("div");
+            watchedRow.style.cssText = "display:flex;gap:.4em;align-items:stretch;";
+            const rating = document.createElement("select");
+            rating.setAttribute("aria-label", "Star rating");
+            rating.style.cssText = "min-width:5.5em;padding:.5em;background:#292929;color:inherit;border:1px solid rgba(255,255,255,.2);border-radius:.25em;";
+            [5, 4, 3, 2, 1].forEach(function (stars) {
+              const option = document.createElement("option");
+              option.value = String(stars);
+              option.textContent = stars + " ★";
+              rating.appendChild(option);
+            });
+            const watchedButton = document.createElement("button");
+            watchedButton.setAttribute("is", "emby-button");
+            watchedButton.type = "button";
+            watchedButton.className = "raised block";
+            watchedButton.style.flex = "1";
+            watchedButton.textContent = "Already watched";
+            watchedButton.addEventListener("click", function () {
+              watchedButton.disabled = true;
+              ApiClient.ajax({
+                type: "POST",
+                url: ApiClient.getUrl("JellyRec/Watched"),
+                data: JSON.stringify({ tmdbId: tmdbIdValue, mediaType: mediaTypeValue, title: titleValue, rating: Number(rating.value) }),
+                contentType: "application/json"
+              }).then(function () {
+                card.remove();
+              }).catch(function () {
+                watchedButton.disabled = false;
+                Dashboard.alert("Could not save this watched rating. Check Jellyfin logs.");
+              });
+            });
+            watchedRow.appendChild(rating);
+            watchedRow.appendChild(watchedButton);
+            card.appendChild(watchedRow);
             list.appendChild(card);
           });
         });

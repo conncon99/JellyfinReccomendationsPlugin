@@ -54,6 +54,8 @@ public sealed class PluginConfiguration : BasePluginConfiguration
 
     public string DismissedItems { get; set; } = string.Empty;
 
+    public string ManuallyWatchedItems { get; set; } = string.Empty;
+
     public int RecommendationRetentionDays { get; set; } = 7;
 
     public string ExpiredRecommendationCooldowns { get; set; } = string.Empty;

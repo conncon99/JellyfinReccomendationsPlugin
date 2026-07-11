@@ -2,7 +2,16 @@
 
 A Jellyfin server plugin concept that creates a cross-client recommendations library backed by Trakt and Seerr.
 
-The plugin is designed around Jellyfin's server-side library model, so the same recommendation shelf can appear in Jellyfin Web, Android, Android TV, and Fire TV clients. Users request a recommendation by marking its placeholder item as a favorite in Jellyfin; the plugin then creates the corresponding Seerr request, which your existing Sonarr/Radarr setup can process.
+The plugin is designed around Jellyfin's server-side library model, so the same recommendations and actions work in Jellyfin Web, Android, Android TV, and Fire TV. It automatically creates separate **Recommended Movies** and **Recommended Series** home libraries.
+
+Use Jellyfin's native card actions directly from either shelf:
+
+- **Rate** a title to mark it watched and use the score in future recommendations.
+- **Dislike** a title to mark it Not Interested and permanently hide it.
+- **Mark Played** to mark it watched with a neutral three-star score.
+- **Favorite** a title to request it in Seerr.
+
+On Android TV and Fire TV, long-press Select on a card to open its actions. Because these are native Jellyfin actions rather than injected web controls, the workflow is consistent across clients.
 
 ## MVP Flow
 
@@ -11,8 +20,8 @@ The plugin is designed around Jellyfin's server-side library model, so the same 
 3. Optionally enable Jellyfin watch-history sync to populate your connected Trakt profile.
 4. Run the `Refresh Jellyfin Recommendations` scheduled task.
 5. The plugin samples recently watched movies and series, merges Trakt personal recommendations with Seerr/TMDb similar-title recommendations, and writes `.strm`, `.nfo`, and plugin metadata files into the recommendation library directory.
-6. Add that directory to Jellyfin as a Movies/Shows library.
-7. Favorite an item from that library to request it in Seerr.
+6. JellyRec creates and maintains the two recommendation libraries automatically.
+7. Use Rate, Dislike, Mark Played, or Favorite directly from a recommendation card.
 
 ## Remote Jellyfin Testing
 
@@ -44,7 +53,9 @@ The current ranker:
 - deduplicates candidates by media type and TMDb ID;
 - weights Trakt candidates above Seerr candidates by default.
 - diversifies the final shelf across source titles, movies/shows, and release decades;
-- permanently excludes titles marked **Not interested** on the plugin configuration page.
+- permanently excludes titles marked **Not Interested** using Dislike or the administration page;
+- uses manually watched star ratings as weighted seeds for subsequent refreshes;
+- enriches Trakt results with TMDb artwork through Seerr and supplies a graceful image fallback.
 
 Watch-history sync runs with each scheduled or manual recommendation refresh. The configuration page also provides **Resync All Watch History**, which safely submits the complete eligible history again and reports discovered, submitted, accepted, and skipped counts. Episodes can be matched using their TMDb/TVDB IDs or their parent series TMDb ID plus season and episode number.
 
@@ -54,9 +65,7 @@ Future OAuth/device-code setup should replace manual Trakt access-token entry.
 
 ## Project Status
 
-This repository contains the initial plugin scaffold and implementation slice. It follows the same cross-client pattern as JellyBridge but narrows the feature set to recommendations.
-
-Build verification is pending because this machine currently has .NET runtimes but no .NET SDK installed.
+The plugin targets Jellyfin 10.11 and is built and packaged with .NET 9.
 
 ## References
 

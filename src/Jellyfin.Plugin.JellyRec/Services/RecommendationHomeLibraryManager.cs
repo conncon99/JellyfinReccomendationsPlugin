@@ -8,7 +8,9 @@ namespace Jellyfin.Plugin.JellyRec.Services;
 
 public sealed class RecommendationHomeLibraryManager
 {
-    private const string LibraryName = "Recommended For You";
+    private const string LegacyLibraryName = "Recommended For You";
+    private const string MovieLibraryName = "Recommended Movies";
+    private const string SeriesLibraryName = "Recommended Series";
     private readonly ILibraryManager _libraryManager;
     private readonly RecommendationFolderManager _folderManager;
     private readonly ILogger<RecommendationHomeLibraryManager> _logger;
@@ -25,29 +27,40 @@ public sealed class RecommendationHomeLibraryManager
 
     public async Task EnsureHomeLibraryAsync(PluginConfiguration config, CancellationToken cancellationToken)
     {
-        var path = await _folderManager.EnsureRecommendationPathAsync(config, cancellationToken).ConfigureAwait(false);
+        await _folderManager.EnsureRecommendationPathAsync(config, cancellationToken).ConfigureAwait(false);
+        await EnsureLibraryAsync(MovieLibraryName, _folderManager.GetMediaPath(config, "movie"), CollectionTypeOptions.movies).ConfigureAwait(false);
+        await EnsureLibraryAsync(SeriesLibraryName, _folderManager.GetMediaPath(config, "tv"), CollectionTypeOptions.tvshows).ConfigureAwait(false);
+
+        // v0.1.31 and earlier used one mixed library. Remove it after the two focused
+        // libraries exist so upgrades do not leave a duplicate home shelf behind.
+        if (_libraryManager.GetVirtualFolders().Any(folder => string.Equals(folder.Name, LegacyLibraryName, StringComparison.OrdinalIgnoreCase)))
+        {
+            await _libraryManager.RemoveVirtualFolder(LegacyLibraryName, false).ConfigureAwait(false);
+            _logger.LogInformation("Removed legacy JellyRec library {LibraryName}", LegacyLibraryName);
+        }
+
+        _libraryManager.QueueLibraryScan();
+    }
+
+    private async Task EnsureLibraryAsync(string libraryName, string path, CollectionTypeOptions collectionType)
+    {
         var normalizedPath = Path.GetFullPath(path);
         var existing = _libraryManager.GetVirtualFolders()
-            .FirstOrDefault(folder => string.Equals(folder.Name, LibraryName, StringComparison.OrdinalIgnoreCase));
+            .FirstOrDefault(folder => string.Equals(folder.Name, libraryName, StringComparison.OrdinalIgnoreCase));
 
-        if (existing is not null)
+        if (existing is null)
         {
-            if (!existing.Locations.Any(location => SamePath(location, normalizedPath)))
-            {
-                _libraryManager.AddMediaPath(LibraryName, new MediaPathInfo(normalizedPath));
-                _logger.LogInformation("Added JellyRec recommendation path {Path} to home library {LibraryName}", normalizedPath, LibraryName);
-            }
-
+            var options = new LibraryOptions { PathInfos = new[] { new MediaPathInfo(normalizedPath) } };
+            await _libraryManager.AddVirtualFolder(libraryName, collectionType, options, false).ConfigureAwait(false);
+            _logger.LogInformation("Created JellyRec home library {LibraryName} at {Path}", libraryName, normalizedPath);
             return;
         }
 
-        var options = new LibraryOptions
+        if (!existing.Locations.Any(location => SamePath(location, normalizedPath)))
         {
-            PathInfos = new[] { new MediaPathInfo(normalizedPath) }
-        };
-
-        await _libraryManager.AddVirtualFolder(LibraryName, CollectionTypeOptions.mixed, options, true).ConfigureAwait(false);
-        _logger.LogInformation("Created JellyRec home library {LibraryName} at {Path}", LibraryName, normalizedPath);
+            _libraryManager.AddMediaPath(libraryName, new MediaPathInfo(normalizedPath));
+            _logger.LogInformation("Added JellyRec path {Path} to home library {LibraryName}", normalizedPath, libraryName);
+        }
     }
 
     private static bool SamePath(string left, string right)

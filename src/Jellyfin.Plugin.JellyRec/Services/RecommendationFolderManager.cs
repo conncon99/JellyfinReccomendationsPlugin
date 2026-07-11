@@ -6,6 +6,8 @@ namespace Jellyfin.Plugin.JellyRec.Services;
 
 public sealed class RecommendationFolderManager
 {
+    public const string MoviesFolderName = "Movies";
+    public const string SeriesFolderName = "Series";
     private const string DefaultFolderName = "JellyRec";
     private const string DefaultRecommendationsFolderName = "Recommendations";
     private readonly IApplicationPaths _applicationPaths;
@@ -31,6 +33,8 @@ public sealed class RecommendationFolderManager
     {
         var path = ResolveRecommendationPath(config);
         Directory.CreateDirectory(path);
+        Directory.CreateDirectory(GetMediaPath(config, "movie"));
+        Directory.CreateDirectory(GetMediaPath(config, "tv"));
 
         var probePath = Path.Combine(path, ".jellyrec-write-test");
         await File.WriteAllTextAsync(probePath, "ok", cancellationToken).ConfigureAwait(false);
@@ -38,5 +42,10 @@ public sealed class RecommendationFolderManager
 
         _logger.LogInformation("JellyRec recommendation folder is ready at {Path}", path);
         return path;
+    }
+
+    public string GetMediaPath(PluginConfiguration config, string mediaType)
+    {
+        return Path.Combine(ResolveRecommendationPath(config), mediaType == "tv" ? SeriesFolderName : MoviesFolderName);
     }
 }

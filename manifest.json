@@ -9,6 +9,17 @@
     "repositoryUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin",
     "versions":  [
                      {
+                         "version":  "0.1.32.0",
+                         "changelog":  "Add separate movie and series home shelves, native cross-client watched/rating and Not Interested actions, improved artwork recovery, TV-friendly guidance, and automatic shelf cleanup.",
+                         "targetAbi":  "10.11.0.0",
+                         "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.32.0.zip",
+                         "checksum":  "7E92EE76184F6D1BF4E28DB6F6117044",
+                         "timestamp":  "2026-07-11T12:04:22.921Z",
+                         "dependencies":  [
+
+                                          ]
+                     },
+                     {
                          "version":  "0.1.31.0",
                          "changelog":  "Fix recommendation cards and Not Interested actions, improve Trakt history matching and resync reporting, and add configurable recommendation expiry with cooldown.",
                          "targetAbi":  "10.11.0.0",

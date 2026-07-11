@@ -176,6 +176,34 @@ public sealed class JellyRecController : ControllerBase
         return Ok();
     }
 
+    [HttpPost("Watched")]
+    public ActionResult MarkWatched([FromBody] WatchedRequest request)
+    {
+        if (request.TmdbId <= 0 || (request.MediaType != "movie" && request.MediaType != "tv") ||
+            request.Rating < 1 || request.Rating > 5)
+        {
+            return BadRequest();
+        }
+
+        var config = Plugin.Config;
+        var entries = config.ManuallyWatchedItems
+            .Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Where(value => !value.StartsWith($"{request.MediaType}:{request.TmdbId}|", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        entries.Add($"{request.MediaType}:{request.TmdbId}|{request.Rating}|{Uri.EscapeDataString(request.Title ?? string.Empty)}");
+        config.ManuallyWatchedItems = string.Join(';', entries.OrderBy(value => value));
+        Plugin.Instance.UpdateConfiguration(config);
+
+        var existing = _writer.ReadAll(config).FirstOrDefault(item => item.TmdbId == request.TmdbId && item.MediaType == request.MediaType);
+        if (existing is not null)
+        {
+            _writer.Remove(config, existing);
+        }
+
+        _logger.LogInformation("Marked {MediaType} {TmdbId} watched with {Rating} stars", request.MediaType, request.TmdbId, request.Rating);
+        return Ok();
+    }
+
     private ContentResult JsonContent(Dictionary<string, object?> payload)
     {
         return Content(JsonSerializer.Serialize(payload, JsonOptions), "application/json");
@@ -194,4 +222,12 @@ public sealed class NotInterestedRequest
     public int TmdbId { get; set; }
 
     public string MediaType { get; set; } = string.Empty;
+}
+
+public sealed class WatchedRequest
+{
+    public int TmdbId { get; set; }
+    public string MediaType { get; set; } = string.Empty;
+    public string? Title { get; set; }
+    public int Rating { get; set; }
 }

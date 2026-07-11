@@ -11,19 +11,26 @@ public sealed class FavoriteRequestHostedService : IHostedService
     private readonly IUserManager _userManager;
     private readonly SeerrApiClient _seerrApiClient;
     private readonly RecommendationFolderManager _folderManager;
+    private readonly RecommendationLibraryWriter _writer;
+    private readonly ILibraryManager _libraryManager;
     private readonly ILogger<FavoriteRequestHostedService> _logger;
+    private readonly object _configurationLock = new();
 
     public FavoriteRequestHostedService(
         IUserDataManager userDataManager,
         IUserManager userManager,
         SeerrApiClient seerrApiClient,
         RecommendationFolderManager folderManager,
+        RecommendationLibraryWriter writer,
+        ILibraryManager libraryManager,
         ILogger<FavoriteRequestHostedService> logger)
     {
         _userDataManager = userDataManager;
         _userManager = userManager;
         _seerrApiClient = seerrApiClient;
         _folderManager = folderManager;
+        _writer = writer;
+        _libraryManager = libraryManager;
         _logger = logger;
     }
 
@@ -41,10 +48,8 @@ public sealed class FavoriteRequestHostedService : IHostedService
 
     private void OnUserDataSaved(object? sender, UserDataSaveEventArgs e)
     {
-        if (e.SaveReason != UserDataSaveReason.UpdateUserRating ||
-            e.UserData is null ||
+        if (e.UserData is null ||
             e.Item is null ||
-            !e.UserData.IsFavorite ||
             !Plugin.Config.Enabled)
         {
             return;
@@ -57,8 +62,71 @@ public sealed class FavoriteRequestHostedService : IHostedService
             return;
         }
 
-        _ = RequestAsync(e.UserId, recommendation);
+        // These are Jellyfin-native actions present in Web, Android and Android TV.
+        // Dislike means Not Interested; rating or Mark Played means Already Watched.
+        if (e.UserData.Likes == false)
+        {
+            MarkNotInterested(recommendation);
+            return;
+        }
+
+        if (e.SaveReason == UserDataSaveReason.TogglePlayed && e.UserData.Played)
+        {
+            MarkWatched(recommendation, RatingToStars(e.UserData.Rating, 3));
+            return;
+        }
+
+        if (e.SaveReason == UserDataSaveReason.UpdateUserRating && e.UserData.IsFavorite)
+        {
+            _ = RequestAsync(e.UserId, recommendation);
+            return;
+        }
+
+        if (e.SaveReason == UserDataSaveReason.UpdateUserRating && e.UserData.Rating.HasValue)
+        {
+            MarkWatched(recommendation, RatingToStars(e.UserData.Rating, 3));
+            return;
+        }
+
     }
+
+    private void MarkNotInterested(Models.RecommendationItem recommendation)
+    {
+        lock (_configurationLock)
+        {
+            var config = Plugin.Config;
+            var dismissed = config.DismissedItems.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            dismissed.Add($"{recommendation.MediaType}:{recommendation.TmdbId}");
+            config.DismissedItems = string.Join(';', dismissed.OrderBy(value => value));
+            Plugin.Instance.UpdateConfiguration(config);
+            _writer.Remove(config, recommendation);
+        }
+
+        _libraryManager.QueueLibraryScan();
+        _logger.LogInformation("Native Dislike marked {Title} as not interested", recommendation.Title);
+    }
+
+    private void MarkWatched(Models.RecommendationItem recommendation, int stars)
+    {
+        lock (_configurationLock)
+        {
+            var config = Plugin.Config;
+            var prefix = $"{recommendation.MediaType}:{recommendation.TmdbId}|";
+            var entries = config.ManuallyWatchedItems.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Where(value => !value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).ToList();
+            entries.Add($"{recommendation.MediaType}:{recommendation.TmdbId}|{stars}|{Uri.EscapeDataString(recommendation.Title)}");
+            config.ManuallyWatchedItems = string.Join(';', entries.OrderBy(value => value));
+            Plugin.Instance.UpdateConfiguration(config);
+            _writer.Remove(config, recommendation);
+        }
+
+        _libraryManager.QueueLibraryScan();
+        _logger.LogInformation("Native rating marked {Title} watched with {Stars} stars", recommendation.Title, stars);
+    }
+
+    private static int RatingToStars(double? rating, int fallback) =>
+        rating.HasValue ? Math.Clamp((int)Math.Round(rating.Value / 2.0, MidpointRounding.AwayFromZero), 1, 5) : fallback;
 
     private async Task RequestAsync(Guid jellyfinUserId, Models.RecommendationItem recommendation)
     {
@@ -71,6 +139,10 @@ public sealed class FavoriteRequestHostedService : IHostedService
             if (request?.Id > 0)
             {
                 _logger.LogInformation("Created Seerr request {RequestId} for {Title}", request.Id, recommendation.Title);
+                if (Plugin.Config.RemoveAfterRequest && _writer.Remove(Plugin.Config, recommendation))
+                {
+                    _libraryManager.QueueLibraryScan();
+                }
             }
         }
         catch (Exception ex)

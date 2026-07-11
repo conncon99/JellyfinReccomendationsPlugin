@@ -44,6 +44,8 @@ public sealed class RecommendationLibraryWriter
             }
         }
 
+        RemoveStaleFolders(libraryRoot, recommendations);
+
         _logger.LogInformation("Wrote {Count} recommendation placeholders to {Path}", recommendations.Count, libraryRoot);
     }
 
@@ -82,7 +84,14 @@ public sealed class RecommendationLibraryWriter
     public bool Remove(PluginConfiguration config, RecommendationItem item)
     {
         var libraryRoot = Path.GetFullPath(_folderManager.ResolveRecommendationPath(config));
-        var folder = Path.GetFullPath(GetItemFolder(libraryRoot, item));
+        var metadataPath = Directory.EnumerateFiles(libraryRoot, MetadataFileName, SearchOption.AllDirectories)
+            .FirstOrDefault(path => MetadataMatches(path, item));
+        if (metadataPath is null)
+        {
+            return false;
+        }
+
+        var folder = Path.GetFullPath(Path.GetDirectoryName(metadataPath)!);
         if (!folder.StartsWith(libraryRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) || !Directory.Exists(folder))
         {
             return false;
@@ -144,10 +153,11 @@ public sealed class RecommendationLibraryWriter
         <?xml version="1.0" encoding="utf-8"?>
         <movie>
           <title>{Escape(item.Title)}</title>
-          <plot>{Escape(item.Overview)}</plot>
+          <plot>{Escape(ActionHelp(item.Overview))}</plot>
           <year>{item.Year?.ToString() ?? string.Empty}</year>
           <tmdbid>{item.TmdbId}</tmdbid>
           <uniqueid type="tmdb" default="true">{item.TmdbId}</uniqueid>
+          {PosterElement(item)}
         </movie>
         """;
     }
@@ -158,10 +168,11 @@ public sealed class RecommendationLibraryWriter
         <?xml version="1.0" encoding="utf-8"?>
         <tvshow>
           <title>{Escape(item.Title)}</title>
-          <plot>{Escape(item.Overview)}</plot>
+          <plot>{Escape(ActionHelp(item.Overview))}</plot>
           <year>{item.Year?.ToString() ?? string.Empty}</year>
           <tmdbid>{item.TmdbId}</tmdbid>
           <uniqueid type="tmdb" default="true">{item.TmdbId}</uniqueid>
+          {PosterElement(item)}
         </tvshow>
         """;
     }
@@ -169,7 +180,50 @@ public sealed class RecommendationLibraryWriter
     private static string GetItemFolder(string root, RecommendationItem item)
     {
         var year = item.Year.HasValue ? $" ({item.Year})" : string.Empty;
-        return Path.Combine(root, $"{SafeFileName(item.Title)}{year} [{item.MediaType}-{item.TmdbId}]");
+        var mediaFolder = item.MediaType == "tv" ? RecommendationFolderManager.SeriesFolderName : RecommendationFolderManager.MoviesFolderName;
+        return Path.Combine(root, mediaFolder, $"{SafeFileName(item.Title)}{year} [{item.MediaType}-{item.TmdbId}]");
+    }
+
+    private static string ActionHelp(string overview) =>
+        "JellyRec actions: Rate to mark watched and improve future picks. Dislike means Not Interested. Favorite requests it in Seerr. On TV, long-press Select for actions.\n\n" + overview;
+
+    private static string PosterElement(RecommendationItem item) => string.IsNullOrWhiteSpace(item.PosterPath)
+        ? string.Empty
+        : $"<thumb aspect=\"poster\">https://image.tmdb.org/t/p/w500{Escape(item.PosterPath)}</thumb>";
+
+    private static bool MetadataMatches(string path, RecommendationItem expected)
+    {
+        try
+        {
+            var item = JsonSerializer.Deserialize<RecommendationItem>(File.ReadAllText(path), JsonOptions);
+            return item?.TmdbId == expected.TmdbId && item.MediaType == expected.MediaType;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static void RemoveStaleFolders(string root, IReadOnlyCollection<RecommendationItem> current)
+    {
+        var active = current.Select(item => (item.MediaType, item.TmdbId)).ToHashSet();
+        foreach (var metadataPath in Directory.EnumerateFiles(root, MetadataFileName, SearchOption.AllDirectories).ToList())
+        {
+            try
+            {
+                var item = JsonSerializer.Deserialize<RecommendationItem>(File.ReadAllText(metadataPath), JsonOptions);
+                var itemFolder = Path.GetDirectoryName(metadataPath)!;
+                var isLegacyRootItem = string.Equals(Path.GetDirectoryName(itemFolder), root, StringComparison.OrdinalIgnoreCase);
+                if (item is not null && (isLegacyRootItem || !active.Contains((item.MediaType, item.TmdbId))))
+                {
+                    Directory.Delete(itemFolder, true);
+                }
+            }
+            catch
+            {
+                // Leave unreadable folders in place; ReadAll logs the actionable diagnostic.
+            }
+        }
     }
 
     private static string Escape(string value)

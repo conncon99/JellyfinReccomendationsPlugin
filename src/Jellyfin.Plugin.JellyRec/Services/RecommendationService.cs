@@ -59,6 +59,7 @@ public sealed class RecommendationService
 
         // Single-pass gather of watched seeds and existing TMDb IDs in the library
         var (seeds, existing, history, discovered, skipped) = GetWatchedSeedsAndExistingItems(config.RecentlyWatchedLimit);
+        AddManuallyWatchedSeeds(config, seeds, existing);
 
         if (config.SyncJellyfinHistoryToTrakt && HasTraktCredentials(config))
         {
@@ -184,6 +185,24 @@ public sealed class RecommendationService
             {
                 _logger.LogError(ex, "Failed to retrieve Seerr recommendations.");
             }
+        }
+
+        // Trakt recommendations omit artwork; Seerr's detail endpoint supplies the TMDb poster.
+        if (HasSeerrCredentials(config))
+        {
+            var missingArtwork = candidates.Where(item => string.IsNullOrWhiteSpace(item.PosterPath)).ToList();
+            await Task.WhenAll(missingArtwork.Select(async item =>
+            {
+                try
+                {
+                    var details = await _seerrApiClient.GetMediaDetailsAsync(config, item.MediaType, item.TmdbId, cancellationToken).ConfigureAwait(false);
+                    item.PosterPath = details?.PosterPath;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Could not enrich artwork for {MediaType} {TmdbId}", item.MediaType, item.TmdbId);
+                }
+            })).ConfigureAwait(false);
         }
 
         // Process, filter, and rank the candidates
@@ -522,6 +541,36 @@ public sealed class RecommendationService
             .ToList();
 
         return (sortedSeeds, existing, history, discovered, skipped);
+    }
+
+    private static void AddManuallyWatchedSeeds(
+        PluginConfiguration config,
+        ICollection<WatchedSeed> seeds,
+        ISet<(string MediaType, int TmdbId)> existing)
+    {
+        foreach (var entry in config.ManuallyWatchedItems.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = entry.Split('|', 3);
+            var key = parts[0].Split(':', 2);
+            if (parts.Length < 2 || key.Length != 2 ||
+                (key[0] != "movie" && key[0] != "tv") ||
+                !int.TryParse(key[1], out var tmdbId) ||
+                !int.TryParse(parts[1], out var stars))
+            {
+                continue;
+            }
+
+            existing.Add((key[0], tmdbId));
+            seeds.Add(new WatchedSeed
+            {
+                TmdbId = tmdbId,
+                MediaType = key[0],
+                Title = parts.Length == 3 ? Uri.UnescapeDataString(parts[2]) : $"TMDb {tmdbId}",
+                UserRating = Math.Clamp(stars, 1, 5) * 2.0,
+                PlayCount = 1,
+                LastPlayedDate = DateTime.UtcNow
+            });
+        }
     }
 
     private UserItemData? GetMostRecentUserData(BaseItem item)

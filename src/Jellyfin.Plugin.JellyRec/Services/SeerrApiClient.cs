@@ -57,6 +57,20 @@ public sealed class SeerrApiClient
         return array?.Take(take).ToList() ?? new List<SeerrMediaResult>();
     }
 
+    public async Task<SeerrMediaResult?> GetMediaDetailsAsync(PluginConfiguration config, string mediaType, int tmdbId, CancellationToken cancellationToken)
+    {
+        var endpoint = mediaType == "tv" ? $"/api/v1/tv/{tmdbId}" : $"/api/v1/movie/{tmdbId}";
+        using var request = BuildRequest(config, HttpMethod.Get, endpoint);
+        using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning("Seerr details endpoint returned {StatusCode} for {MediaType} {TmdbId}", response.StatusCode, mediaType, tmdbId);
+            return null;
+        }
+
+        return await response.Content.ReadFromJsonAsync<SeerrMediaResult>(JsonOptions, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<List<SeerrUser>> GetUsersAsync(PluginConfiguration config, CancellationToken cancellationToken)
     {
         using var request = BuildRequest(config, HttpMethod.Get, "/api/v1/user?take=2147483647");
@@ -143,4 +157,3 @@ public sealed class SeerrApiClient
         return request;
     }
 }
-
