@@ -134,6 +134,33 @@ public sealed class JellyRecController : ControllerBase
         return Ok(new { count = recommendations.Count, recommendations });
     }
 
+    [HttpPost("NotInterested")]
+    public ActionResult MarkNotInterested([FromBody] NotInterestedRequest request)
+    {
+        if (request.TmdbId <= 0 || (request.MediaType != "movie" && request.MediaType != "tv"))
+        {
+            return BadRequest();
+        }
+
+        var config = Plugin.Config;
+        var key = $"{request.MediaType}:{request.TmdbId}";
+        var dismissed = config.DismissedItems
+            .Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        dismissed.Add(key);
+        config.DismissedItems = string.Join(';', dismissed.OrderBy(value => value));
+        Plugin.Instance.UpdateConfiguration(config);
+
+        var existing = _writer.ReadAll(config).FirstOrDefault(item => item.TmdbId == request.TmdbId && item.MediaType == request.MediaType);
+        if (existing is not null)
+        {
+            _writer.Remove(config, existing);
+        }
+
+        _logger.LogInformation("Marked {MediaType} {TmdbId} as not interested", request.MediaType, request.TmdbId);
+        return Ok();
+    }
+
     private ContentResult JsonContent(Dictionary<string, object?> payload)
     {
         return Content(JsonSerializer.Serialize(payload, JsonOptions), "application/json");
@@ -145,4 +172,11 @@ public sealed class TraktDeviceTokenRequest
     public PluginConfiguration Configuration { get; set; } = new();
 
     public string DeviceCode { get; set; } = string.Empty;
+}
+
+public sealed class NotInterestedRequest
+{
+    public int TmdbId { get; set; }
+
+    public string MediaType { get; set; } = string.Empty;
 }

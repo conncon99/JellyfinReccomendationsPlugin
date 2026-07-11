@@ -43,6 +43,11 @@
             <span>Use Trakt personal recommendations</span>
           </label>
           <label class="checkboxContainer">
+            <input is="emby-checkbox" type="checkbox" id="SyncJellyfinHistoryToTrakt" />
+            <span>Sync played Jellyfin movies and episodes to Trakt</span>
+          </label>
+          <div class="fieldDescription">Opt-in. The first refresh sends all known played movies and episodes; later refreshes send newly played items.</div>
+          <label class="checkboxContainer">
             <input is="emby-checkbox" type="checkbox" id="EnableSeerrRecommendations" />
             <span>Use Seerr/TMDb similar-title fallback</span>
           </label>
@@ -66,6 +71,10 @@
           </div>
           <div class="inputContainer">
             <input is="emby-input" id="MinRating" type="number" min="0" max="10" step="0.1" label="Minimum Recommendation Rating (0.0 - 10.0)" />
+          </div>
+          <div class="inputContainer">
+            <input is="emby-input" id="DiversityStrength" type="number" min="0" max="5" step="0.1" label="Candidate Variety Strength" />
+            <div class="fieldDescription">Penalizes repeated source titles, media types, and release decades. Set to 0 to disable.</div>
           </div>
           <label class="checkboxContainer">
             <input is="emby-checkbox" type="checkbox" id="RequestOnlyFirstSeason" />
@@ -98,6 +107,11 @@
           </button>
         </div>
       </form>
+      <div class="verticalSection">
+        <h2>Current Recommendations</h2>
+        <div class="fieldDescription">Dismiss a title to remove it now and prevent it from returning in future refreshes.</div>
+        <div id="RecommendationList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1em;margin-top:1em;"></div>
+      </div>
     </div>
   </div>
   <script type="text/javascript">
@@ -110,6 +124,8 @@
         RecommendationLibraryPath: "",
         SourceLibraryPaths: "",
         EnableTraktRecommendations: true,
+        SyncJellyfinHistoryToTrakt: false,
+        TraktHistoryLastSyncedAtUtc: null,
         TraktClientId: "",
         TraktClientSecret: "",
         TraktAccessToken: "",
@@ -124,7 +140,9 @@
         RefreshIntervalHours: 24,
         RequestOnlyFirstSeason: true,
         RemoveAfterRequest: true,
-        MinRating: 6.0
+        MinRating: 6.0,
+        DiversityStrength: 1.0,
+        DismissedItems: ""
       };
 
       function byId(id) {
@@ -143,6 +161,8 @@
           RecommendationLibraryPath: byId("RecommendationLibraryPath").value,
           SourceLibraryPaths: byId("SourceLibraryPaths").value,
           EnableTraktRecommendations: byId("EnableTraktRecommendations").checked,
+          SyncJellyfinHistoryToTrakt: byId("SyncJellyfinHistoryToTrakt").checked,
+          TraktHistoryLastSyncedAtUtc: defaults.TraktHistoryLastSyncedAtUtc,
           TraktClientId: byId("TraktClientId").value,
           TraktClientSecret: byId("TraktClientSecret").value,
           TraktAccessToken: byId("TraktAccessToken").value,
@@ -157,7 +177,9 @@
           RefreshIntervalHours: Number(byId("RefreshIntervalHours").value || defaults.RefreshIntervalHours),
           RequestOnlyFirstSeason: byId("RequestOnlyFirstSeason").checked,
           RemoveAfterRequest: byId("RemoveAfterRequest").checked,
-          MinRating: Number(byId("MinRating").value || defaults.MinRating)
+          MinRating: Number(byId("MinRating").value || defaults.MinRating),
+          DiversityStrength: Number(byId("DiversityStrength").value || defaults.DiversityStrength),
+          DismissedItems: defaults.DismissedItems
         };
       }
 
@@ -169,6 +191,8 @@
         byId("RecommendationLibraryPath").value = config.RecommendationLibraryPath || "";
         byId("SourceLibraryPaths").value = config.SourceLibraryPaths || "";
         byId("EnableTraktRecommendations").checked = config.EnableTraktRecommendations !== false;
+        byId("SyncJellyfinHistoryToTrakt").checked = !!config.SyncJellyfinHistoryToTrakt;
+        defaults.TraktHistoryLastSyncedAtUtc = config.TraktHistoryLastSyncedAtUtc || null;
         byId("TraktClientId").value = config.TraktClientId || "";
         byId("TraktClientSecret").value = config.TraktClientSecret || "";
         byId("TraktAccessToken").value = config.TraktAccessToken || "";
@@ -184,6 +208,59 @@
         byId("RequestOnlyFirstSeason").checked = config.RequestOnlyFirstSeason !== false;
         byId("RemoveAfterRequest").checked = config.RemoveAfterRequest !== false;
         byId("MinRating").value = config.MinRating !== undefined ? config.MinRating : defaults.MinRating;
+        byId("DiversityStrength").value = config.DiversityStrength !== undefined ? config.DiversityStrength : defaults.DiversityStrength;
+        defaults.DismissedItems = config.DismissedItems || "";
+      }
+
+      function loadRecommendations() {
+        return ApiClient.ajax({
+          type: "GET",
+          url: ApiClient.getUrl("JellyRec/Recommendations"),
+          dataType: "json"
+        }).then(function (response) {
+          response = normalizeResponse(response);
+          const list = byId("RecommendationList");
+          list.replaceChildren();
+          (response.recommendations || []).forEach(function (item) {
+            const card = document.createElement("div");
+            card.style.cssText = "padding:.75em;background:rgba(128,128,128,.12);border-radius:.4em;display:flex;flex-direction:column;gap:.5em;";
+
+            if (item.posterPath) {
+              const image = document.createElement("img");
+              image.src = "https://image.tmdb.org/t/p/w342" + item.posterPath;
+              image.alt = "";
+              image.loading = "lazy";
+              image.style.cssText = "width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:.25em;";
+              card.appendChild(image);
+            }
+
+            const title = document.createElement("strong");
+            title.textContent = item.title || "Untitled";
+            card.appendChild(title);
+
+            const button = document.createElement("button");
+            button.setAttribute("is", "emby-button");
+            button.type = "button";
+            button.className = "raised block";
+            button.textContent = "Not interested";
+            button.addEventListener("click", function () {
+              button.disabled = true;
+              ApiClient.ajax({
+                type: "POST",
+                url: ApiClient.getUrl("JellyRec/NotInterested"),
+                data: JSON.stringify({ tmdbId: item.tmdbId, mediaType: item.mediaType }),
+                contentType: "application/json"
+              }).then(function () {
+                card.remove();
+              }).catch(function () {
+                button.disabled = false;
+                Dashboard.alert("Could not dismiss this recommendation. Check Jellyfin logs.");
+              });
+            });
+            card.appendChild(button);
+            list.appendChild(card);
+          });
+        });
       }
 
       function ensureFolder() {
@@ -313,8 +390,8 @@
 
       function loadConfig() {
         Dashboard.showLoadingMsg();
-        ApiClient.getPluginConfiguration(pluginId)
-          .then(writeForm)
+        Promise.all([ApiClient.getPluginConfiguration(pluginId), loadRecommendations()])
+          .then(function (results) { writeForm(results[0]); })
           .catch(function () {
             Dashboard.alert("Could not load JellyRec settings.");
           })
@@ -438,6 +515,7 @@
           }).then(function (result) {
             result = normalizeResponse(result);
             Dashboard.alert("Recommendation refresh completed. " + (result.count || 0) + " items are ready on the Jellyfin home screen.");
+            return loadRecommendations();
           }).catch(function () {
             Dashboard.alert("Recommendation refresh failed. Check Jellyfin logs.");
           }).finally(hideLoading);

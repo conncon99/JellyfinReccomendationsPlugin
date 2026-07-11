@@ -18,6 +18,10 @@ public sealed class PluginConfiguration : BasePluginConfiguration
 
     public bool EnableTraktRecommendations { get; set; } = true;
 
+    public bool SyncJellyfinHistoryToTrakt { get; set; }
+
+    public DateTime? TraktHistoryLastSyncedAtUtc { get; set; }
+
     public string TraktClientId { get; set; } = string.Empty;
 
     public string TraktClientSecret { get; set; } = string.Empty;
@@ -45,4 +49,8 @@ public sealed class PluginConfiguration : BasePluginConfiguration
     public bool RemoveAfterRequest { get; set; } = true;
 
     public double MinRating { get; set; } = 6.0;
+
+    public double DiversityStrength { get; set; } = 1.0;
+
+    public string DismissedItems { get; set; } = string.Empty;
 }

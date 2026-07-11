@@ -79,6 +79,19 @@ public sealed class RecommendationLibraryWriter
             .ToList();
     }
 
+    public bool Remove(PluginConfiguration config, RecommendationItem item)
+    {
+        var libraryRoot = Path.GetFullPath(_folderManager.ResolveRecommendationPath(config));
+        var folder = Path.GetFullPath(GetItemFolder(libraryRoot, item));
+        if (!folder.StartsWith(libraryRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) || !Directory.Exists(folder))
+        {
+            return false;
+        }
+
+        Directory.Delete(folder, true);
+        return true;
+    }
+
     public static RecommendationItem? TryReadMetadataForPath(string libraryRoot, string? itemPath)
     {
         if (string.IsNullOrWhiteSpace(itemPath) || string.IsNullOrWhiteSpace(libraryRoot))

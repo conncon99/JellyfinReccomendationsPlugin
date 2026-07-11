@@ -131,6 +131,54 @@ public sealed class TraktApiClient
         return results;
     }
 
+    public async Task<int> AddToHistoryAsync(
+        PluginConfiguration config,
+        IReadOnlyCollection<TraktHistoryItem> items,
+        CancellationToken cancellationToken)
+    {
+        if (items.Count == 0)
+        {
+            return 0;
+        }
+
+        var synced = 0;
+        foreach (var batch in items.Chunk(100))
+        {
+            var body = new
+            {
+                movies = batch
+                    .Where(item => item.MediaType == "movie")
+                    .Select(item => new
+                    {
+                        watched_at = item.WatchedAtUtc,
+                        ids = new { tmdb = item.TmdbId }
+                    }),
+                episodes = batch
+                    .Where(item => item.MediaType == "episode")
+                    .Select(item => new
+                    {
+                        watched_at = item.WatchedAtUtc,
+                        season = item.SeasonNumber,
+                        number = item.EpisodeNumber,
+                        ids = new { tmdb = item.TmdbId }
+                    })
+            };
+
+            using var request = BuildTraktJsonRequest(config, "https://api.trakt.tv/sync/history", body);
+            request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {config.TraktAccessToken}");
+            using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                throw new InvalidOperationException($"Trakt history sync failed ({(int)response.StatusCode} {response.StatusCode}): {content}");
+            }
+
+            synced += batch.Length;
+        }
+
+        return synced;
+    }
+
     private async Task<List<RecommendationItem>> GetRecommendationBucketAsync(PluginConfiguration config, string bucket, int limit, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(config.TraktClientId) || string.IsNullOrWhiteSpace(config.TraktAccessToken))

@@ -9,6 +9,17 @@
     "repositoryUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin",
     "versions":  [
                      {
+                         "version":  "0.1.30.0",
+                         "changelog":  "Add opt-in Jellyfin-to-Trakt watch history sync, diversity-aware candidate ranking, and persistent Not Interested feedback.",
+                         "targetAbi":  "10.11.0.0",
+                         "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.30.0.zip",
+                         "checksum":  "B31463B2CC890717F38762EB1C5E4108",
+                         "timestamp":  "2026-07-11T11:28:28.419Z",
+                         "dependencies":  [
+
+                                          ]
+                     },
+                     {
                          "version":  "0.1.29.0",
                          "changelog":  "Optimized sweeps, parallelized API queries, filtered out Seerr requests, enabled star-rating filters, added Favorites seed boosting, and added Time Decay recency prioritization.",
                          "targetAbi":  "10.11.0.0",

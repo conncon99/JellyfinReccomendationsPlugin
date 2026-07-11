@@ -8,10 +8,11 @@ The plugin is designed around Jellyfin's server-side library model, so the same 
 
 1. Configure your Seerr URL, API key, recommendation library directory, and the Jellyfin libraries to use as watch-history sources.
 2. Configure Trakt with a client ID and access token if you want personal watch-habit recommendations.
-3. Run the `Refresh Jellyfin Recommendations` scheduled task.
-4. The plugin samples recently watched movies and series, merges Trakt personal recommendations with Seerr/TMDb similar-title recommendations, and writes `.strm`, `.nfo`, and plugin metadata files into the recommendation library directory.
-5. Add that directory to Jellyfin as a Movies/Shows library.
-6. Favorite an item from that library to request it in Seerr.
+3. Optionally enable Jellyfin watch-history sync to populate your connected Trakt profile.
+4. Run the `Refresh Jellyfin Recommendations` scheduled task.
+5. The plugin samples recently watched movies and series, merges Trakt personal recommendations with Seerr/TMDb similar-title recommendations, and writes `.strm`, `.nfo`, and plugin metadata files into the recommendation library directory.
+6. Add that directory to Jellyfin as a Movies/Shows library.
+7. Favorite an item from that library to request it in Seerr.
 
 ## Remote Jellyfin Testing
 
@@ -42,6 +43,8 @@ The current ranker:
 - excludes media already present in Jellyfin;
 - deduplicates candidates by media type and TMDb ID;
 - weights Trakt candidates above Seerr candidates by default.
+- diversifies the final shelf across source titles, movies/shows, and release decades;
+- permanently excludes titles marked **Not interested** on the plugin configuration page.
 
 Future OAuth/device-code setup should replace manual Trakt access-token entry.
 

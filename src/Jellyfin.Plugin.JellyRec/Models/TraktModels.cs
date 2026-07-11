@@ -53,3 +53,15 @@ public sealed class TraktIds
     public string? Imdb { get; set; }
 }
 
+public sealed class TraktHistoryItem
+{
+    public int TmdbId { get; init; }
+
+    public string MediaType { get; init; } = string.Empty;
+
+    public DateTime WatchedAtUtc { get; init; }
+
+    public int? SeasonNumber { get; init; }
+
+    public int? EpisodeNumber { get; init; }
+}
