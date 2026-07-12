@@ -16,7 +16,7 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddTransient<RecommendationFolderManager>();
         serviceCollection.AddTransient<RecommendationHomeLibraryManager>();
         serviceCollection.AddTransient<RecommendationService>();
-        serviceCollection.AddTransient<RecommendationLibraryWriter>();
+        serviceCollection.AddHttpClient<RecommendationLibraryWriter>();
         serviceCollection.AddTransient<RefreshRecommendationsTask>();
         serviceCollection.AddScoped<JellyRecController>();
         serviceCollection.AddHostedService<FavoriteRequestHostedService>();

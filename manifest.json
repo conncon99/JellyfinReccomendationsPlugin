@@ -9,6 +9,17 @@
     "repositoryUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin",
     "versions":  [
                      {
+                         "version":  "0.1.35.0",
+                         "changelog":  "Fixes stale S00E9999 TV entries with a clean library migration, restores plots through full metadata enrichment, and caches smaller posters locally for faster Android TV scrolling.",
+                         "targetAbi":  "10.11.0.0",
+                         "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.35.0.zip",
+                         "checksum":  "E2F3F93380B572A67AAF7746561ADFD7",
+                         "timestamp":  "2026-07-12T19:49:38.018Z",
+                         "dependencies":  [
+
+                                          ]
+                     },
+                     {
                          "version":  "0.1.34.0",
                          "changelog":  "Adds a concise Android TV and Fire TV action legend at the start of every recommendation description.",
                          "targetAbi":  "10.11.0.0",

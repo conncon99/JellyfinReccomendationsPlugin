@@ -10,7 +10,8 @@ public sealed class RecommendationHomeLibraryManager
 {
     private const string LegacyLibraryName = "Recommended For You";
     private const string MovieLibraryName = "Recommended Movies";
-    private const string SeriesLibraryName = "Recommended Series";
+    private const string LegacySeriesLibraryName = "Recommended Series";
+    private const string SeriesLibraryName = "Recommended TV Shows";
     private readonly ILibraryManager _libraryManager;
     private readonly RecommendationFolderManager _folderManager;
     private readonly ILogger<RecommendationHomeLibraryManager> _logger;
@@ -29,6 +30,16 @@ public sealed class RecommendationHomeLibraryManager
     {
         await _folderManager.EnsureRecommendationPathAsync(config, cancellationToken).ConfigureAwait(false);
         await EnsureLibraryAsync(MovieLibraryName, _folderManager.GetMediaPath(config, "movie"), CollectionTypeOptions.movies).ConfigureAwait(false);
+
+        // Replacing the old TV library is deliberate. Jellyfin can retain indexed episode
+        // rows after an in-place collection-type change, leaving S00E9999 visible forever.
+        // A new virtual folder identity guarantees that those cached specials are discarded.
+        if (_libraryManager.GetVirtualFolders().Any(folder => string.Equals(folder.Name, LegacySeriesLibraryName, StringComparison.OrdinalIgnoreCase)))
+        {
+            await _libraryManager.RemoveVirtualFolder(LegacySeriesLibraryName, false).ConfigureAwait(false);
+            _logger.LogInformation("Removed legacy episode-shaped JellyRec library {LibraryName}", LegacySeriesLibraryName);
+        }
+
         // A TV library's home carousel is episode-only. Use movie-shaped cards for series
         // recommendations so Jellyfin displays titles, not fabricated specials.
         await EnsureLibraryAsync(SeriesLibraryName, _folderManager.GetMediaPath(config, "tv"), CollectionTypeOptions.movies).ConfigureAwait(false);

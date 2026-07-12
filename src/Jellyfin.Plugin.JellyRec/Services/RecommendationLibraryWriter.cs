@@ -11,11 +11,13 @@ public sealed class RecommendationLibraryWriter
     public const string MetadataFileName = "jellyrec.json";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     private readonly RecommendationFolderManager _folderManager;
+    private readonly HttpClient _httpClient;
     private readonly ILogger<RecommendationLibraryWriter> _logger;
 
-    public RecommendationLibraryWriter(RecommendationFolderManager folderManager, ILogger<RecommendationLibraryWriter> logger)
+    public RecommendationLibraryWriter(RecommendationFolderManager folderManager, HttpClient httpClient, ILogger<RecommendationLibraryWriter> logger)
     {
         _folderManager = folderManager;
+        _httpClient = httpClient;
         _logger = logger;
     }
 
@@ -42,6 +44,8 @@ public sealed class RecommendationLibraryWriter
             {
                 await WriteMovieAsync(folder, item, cancellationToken).ConfigureAwait(false);
             }
+
+            await CachePosterAsync(folder, item, cancellationToken).ConfigureAwait(false);
         }
 
         RemoveStaleFolders(libraryRoot, recommendations);
@@ -244,5 +248,44 @@ public sealed class RecommendationLibraryWriter
         }
 
         await File.WriteAllTextAsync(path, content, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task CachePosterAsync(string folder, RecommendationItem item, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(item.PosterPath))
+        {
+            return;
+        }
+
+        var posterPath = Path.Combine(folder, "poster.jpg");
+        if (File.Exists(posterPath) && new FileInfo(posterPath).Length > 0)
+        {
+            return;
+        }
+
+        var temporaryPath = posterPath + ".tmp";
+        try
+        {
+            using var response = await _httpClient.GetAsync(
+                $"https://image.tmdb.org/t/p/w342{item.PosterPath}",
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+            await using (var source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
+            await using (var destination = new FileStream(temporaryPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
+            {
+                await source.CopyToAsync(destination, cancellationToken).ConfigureAwait(false);
+            }
+
+            File.Move(temporaryPath, posterPath, true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Could not cache poster for {Title}", item.Title);
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
+        }
     }
 }

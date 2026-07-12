@@ -190,13 +190,26 @@ public sealed class RecommendationService
         // Trakt recommendations omit artwork; Seerr's detail endpoint supplies the TMDb poster.
         if (HasSeerrCredentials(config))
         {
-            var missingArtwork = candidates.Where(item => string.IsNullOrWhiteSpace(item.PosterPath)).ToList();
-            await Task.WhenAll(missingArtwork.Select(async item =>
+            var missingDetails = candidates.Where(item =>
+                string.IsNullOrWhiteSpace(item.PosterPath) ||
+                string.IsNullOrWhiteSpace(item.Overview) ||
+                (item.MediaType == "tv" ? string.IsNullOrWhiteSpace(item.FirstAirDate) : string.IsNullOrWhiteSpace(item.ReleaseDate))).ToList();
+            await Task.WhenAll(missingDetails.Select(async item =>
             {
                 try
                 {
                     var details = await _seerrApiClient.GetMediaDetailsAsync(config, item.MediaType, item.TmdbId, cancellationToken).ConfigureAwait(false);
-                    item.PosterPath = details?.PosterPath;
+                    if (details is not null)
+                    {
+                        item.PosterPath ??= details.PosterPath;
+                        if (string.IsNullOrWhiteSpace(item.Overview))
+                        {
+                            item.Overview = details.Overview ?? string.Empty;
+                        }
+
+                        item.ReleaseDate ??= details.ReleaseDate;
+                        item.FirstAirDate ??= details.FirstAirDate;
+                    }
                 }
                 catch (Exception ex)
                 {
