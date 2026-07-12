@@ -11,6 +11,15 @@ Use Jellyfin's native card actions directly from either shelf:
 - **Mark Played** to mark it watched with a neutral three-star score.
 - **Favorite** a title to request it in Seerr.
 
+The Recommended Series shelf uses title cards rather than fake episode files. This avoids
+the old `S00E9999` / Special label while retaining the real TV media type in JellyRec's
+metadata and request API.
+
+Jellyfin server plugins cannot add or rename buttons inside native carousel cards across
+Web, Android, Android TV, and Fire TV. The native actions above remain the cross-client
+controls; JellyRec also exposes explicit `NotInterested`, `Watched` (with a 1–5 rating),
+and `Request` endpoints for a future custom client or web-client integration.
+
 On Android TV and Fire TV, long-press Select on a card to open its actions. Because these are native Jellyfin actions rather than injected web controls, the workflow is consistent across clients.
 
 ## MVP Flow

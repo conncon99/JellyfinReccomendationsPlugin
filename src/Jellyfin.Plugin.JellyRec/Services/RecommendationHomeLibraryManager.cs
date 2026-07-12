@@ -29,7 +29,9 @@ public sealed class RecommendationHomeLibraryManager
     {
         await _folderManager.EnsureRecommendationPathAsync(config, cancellationToken).ConfigureAwait(false);
         await EnsureLibraryAsync(MovieLibraryName, _folderManager.GetMediaPath(config, "movie"), CollectionTypeOptions.movies).ConfigureAwait(false);
-        await EnsureLibraryAsync(SeriesLibraryName, _folderManager.GetMediaPath(config, "tv"), CollectionTypeOptions.tvshows).ConfigureAwait(false);
+        // A TV library's home carousel is episode-only. Use movie-shaped cards for series
+        // recommendations so Jellyfin displays titles, not fabricated specials.
+        await EnsureLibraryAsync(SeriesLibraryName, _folderManager.GetMediaPath(config, "tv"), CollectionTypeOptions.movies).ConfigureAwait(false);
 
         // v0.1.31 and earlier used one mixed library. Remove it after the two focused
         // libraries exist so upgrades do not leave a duplicate home shelf behind.
@@ -47,6 +49,13 @@ public sealed class RecommendationHomeLibraryManager
         var normalizedPath = Path.GetFullPath(path);
         var existing = _libraryManager.GetVirtualFolders()
             .FirstOrDefault(folder => string.Equals(folder.Name, libraryName, StringComparison.OrdinalIgnoreCase));
+
+        if (existing is not null && existing.CollectionType != collectionType)
+        {
+            await _libraryManager.RemoveVirtualFolder(libraryName, false).ConfigureAwait(false);
+            existing = null;
+            _logger.LogInformation("Recreated JellyRec library {LibraryName} with card-oriented type {CollectionType}", libraryName, collectionType);
+        }
 
         if (existing is null)
         {

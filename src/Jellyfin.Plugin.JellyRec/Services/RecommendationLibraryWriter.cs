@@ -29,7 +29,7 @@ public sealed class RecommendationLibraryWriter
             var folder = GetItemFolder(libraryRoot, item);
             Directory.CreateDirectory(folder);
 
-            await File.WriteAllTextAsync(
+            await WriteIfChangedAsync(
                 Path.Combine(folder, MetadataFileName),
                 JsonSerializer.Serialize(item, JsonOptions),
                 cancellationToken).ConfigureAwait(false);
@@ -135,16 +135,29 @@ public sealed class RecommendationLibraryWriter
     private static async Task WriteMovieAsync(string folder, RecommendationItem item, CancellationToken cancellationToken)
     {
         var safeTitle = SafeFileName(item.Title);
-        await File.WriteAllTextAsync(Path.Combine(folder, $"{safeTitle}.strm"), "jellyrec://request", cancellationToken).ConfigureAwait(false);
-        await File.WriteAllTextAsync(Path.Combine(folder, "movie.nfo"), BuildMovieNfo(item), cancellationToken).ConfigureAwait(false);
+        await WriteIfChangedAsync(Path.Combine(folder, $"{safeTitle}.strm"), "jellyrec://request", cancellationToken).ConfigureAwait(false);
+        await WriteIfChangedAsync(Path.Combine(folder, "movie.nfo"), BuildMovieNfo(item), cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task WriteShowAsync(string folder, RecommendationItem item, CancellationToken cancellationToken)
     {
-        var seasonFolder = Path.Combine(folder, "Season 00");
-        Directory.CreateDirectory(seasonFolder);
-        await File.WriteAllTextAsync(Path.Combine(seasonFolder, "S00E9999.strm"), "jellyrec://request", cancellationToken).ConfigureAwait(false);
-        await File.WriteAllTextAsync(Path.Combine(folder, "tvshow.nfo"), BuildShowNfo(item), cancellationToken).ConfigureAwait(false);
+        // Jellyfin's TV home shelf only renders episodes.  The old placeholder therefore
+        // appeared as the fake special S00E9999.  Recommendations are intentionally stored
+        // as movie-shaped cards (while jellyrec.json retains MediaType=tv) so the shelf shows
+        // the recommended series itself and never invents an episode.
+        var legacySeasonFolder = Path.Combine(folder, "Season 00");
+        if (Directory.Exists(legacySeasonFolder))
+        {
+            Directory.Delete(legacySeasonFolder, true);
+        }
+
+        var legacyNfo = Path.Combine(folder, "tvshow.nfo");
+        if (File.Exists(legacyNfo))
+        {
+            File.Delete(legacyNfo);
+        }
+
+        await WriteMovieAsync(folder, item, cancellationToken).ConfigureAwait(false);
     }
 
     private static string BuildMovieNfo(RecommendationItem item)
@@ -159,21 +172,6 @@ public sealed class RecommendationLibraryWriter
           <uniqueid type="tmdb" default="true">{item.TmdbId}</uniqueid>
           {PosterElement(item)}
         </movie>
-        """;
-    }
-
-    private static string BuildShowNfo(RecommendationItem item)
-    {
-        return $"""
-        <?xml version="1.0" encoding="utf-8"?>
-        <tvshow>
-          <title>{Escape(item.Title)}</title>
-          <plot>{Escape(ActionHelp(item.Overview))}</plot>
-          <year>{item.Year?.ToString() ?? string.Empty}</year>
-          <tmdbid>{item.TmdbId}</tmdbid>
-          <uniqueid type="tmdb" default="true">{item.TmdbId}</uniqueid>
-          {PosterElement(item)}
-        </tvshow>
         """;
     }
 
@@ -236,5 +234,15 @@ public sealed class RecommendationLibraryWriter
         var invalid = Path.GetInvalidFileNameChars();
         var cleaned = new string(value.Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray()).Trim();
         return string.IsNullOrWhiteSpace(cleaned) ? "Untitled" : cleaned;
+    }
+
+    private static async Task WriteIfChangedAsync(string path, string content, CancellationToken cancellationToken)
+    {
+        if (File.Exists(path) && string.Equals(await File.ReadAllTextAsync(path, cancellationToken).ConfigureAwait(false), content, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        await File.WriteAllTextAsync(path, content, cancellationToken).ConfigureAwait(false);
     }
 }

@@ -204,6 +204,47 @@ public sealed class JellyRecController : ControllerBase
         return Ok();
     }
 
+    [HttpPost("Request")]
+    public async Task<ActionResult> RequestDownload([FromBody] DownloadRequest request, CancellationToken cancellationToken)
+    {
+        if (request.TmdbId <= 0 || (request.MediaType != "movie" && request.MediaType != "tv"))
+        {
+            return BadRequest();
+        }
+
+        try
+        {
+            var result = await _seerrApiClient.CreateRequestAsync(
+                Plugin.Config,
+                request.MediaType,
+                request.TmdbId,
+                null,
+                cancellationToken).ConfigureAwait(false);
+
+            if (result?.Id is not > 0)
+            {
+                return BadRequest(new { message = "Seerr did not create a request." });
+            }
+
+            if (Plugin.Config.RemoveAfterRequest)
+            {
+                var existing = _writer.ReadAll(Plugin.Config)
+                    .FirstOrDefault(item => item.TmdbId == request.TmdbId && item.MediaType == request.MediaType);
+                if (existing is not null)
+                {
+                    _writer.Remove(Plugin.Config, existing);
+                }
+            }
+
+            return Ok(new { requestId = result.Id });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to request {MediaType} {TmdbId} from explicit download endpoint", request.MediaType, request.TmdbId);
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     private ContentResult JsonContent(Dictionary<string, object?> payload)
     {
         return Content(JsonSerializer.Serialize(payload, JsonOptions), "application/json");
@@ -230,4 +271,11 @@ public sealed class WatchedRequest
     public string MediaType { get; set; } = string.Empty;
     public string? Title { get; set; }
     public int Rating { get; set; }
+}
+
+public sealed class DownloadRequest
+{
+    public int TmdbId { get; set; }
+
+    public string MediaType { get; set; } = string.Empty;
 }

@@ -9,6 +9,17 @@
     "repositoryUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin",
     "versions":  [
                      {
+                         "version":  "0.1.33.0",
+                         "changelog":  "Faster recommendation shelf updates; series now render as title cards instead of S00E9999 specials; adds explicit request/download API.",
+                         "targetAbi":  "10.11.0.0",
+                         "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.33.0.zip",
+                         "checksum":  "B621308693BCB603C2CA33A398645E85",
+                         "timestamp":  "2026-07-12T19:29:48.948Z",
+                         "dependencies":  [
+
+                                          ]
+                     },
+                     {
                          "version":  "0.1.32.0",
                          "changelog":  "Add separate movie and series home shelves, native cross-client watched/rating and Not Interested actions, improved artwork recovery, TV-friendly guidance, and automatic shelf cleanup.",
                          "targetAbi":  "10.11.0.0",
