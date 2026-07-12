@@ -9,6 +9,17 @@
     "repositoryUrl":  "https://github.com/conncon99/JellyfinReccomendationsPlugin",
     "versions":  [
                      {
+                         "version":  "0.1.34.0",
+                         "changelog":  "Adds a concise Android TV and Fire TV action legend at the start of every recommendation description.",
+                         "targetAbi":  "10.11.0.0",
+                         "sourceUrl":  "https://raw.githubusercontent.com/conncon99/JellyfinReccomendationsPlugin/main/release/JellyRec-0.1.34.0.zip",
+                         "checksum":  "88A4109EB93FBA77BEBBF4A0EA23CEDC",
+                         "timestamp":  "2026-07-12T19:37:21.978Z",
+                         "dependencies":  [
+
+                                          ]
+                     },
+                     {
                          "version":  "0.1.33.0",
                          "changelog":  "Faster recommendation shelf updates; series now render as title cards instead of S00E9999 specials; adds explicit request/download API.",
                          "targetAbi":  "10.11.0.0",

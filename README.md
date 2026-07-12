@@ -21,6 +21,8 @@ controls; JellyRec also exposes explicit `NotInterested`, `Watched` (with a 1–
 and `Request` endpoints for a future custom client or web-client integration.
 
 On Android TV and Fire TV, long-press Select on a card to open its actions. Because these are native Jellyfin actions rather than injected web controls, the workflow is consistent across clients.
+The item description begins with a concise legend mapping those native actions to their
+JellyRec behaviour, so it is visible whenever the TV client shows the item overview.
 
 ## MVP Flow
 

@@ -183,7 +183,7 @@ public sealed class RecommendationLibraryWriter
     }
 
     private static string ActionHelp(string overview) =>
-        "JellyRec actions: Rate to mark watched and improve future picks. Dislike means Not Interested. Favorite requests it in Seerr. On TV, long-press Select for actions.\n\n" + overview;
+        "JellyRec: Dislike = Not interested • Mark played / Rate = Already seen • Favorite = Download\n\n" + overview;
 
     private static string PosterElement(RecommendationItem item) => string.IsNullOrWhiteSpace(item.PosterPath)
         ? string.Empty
